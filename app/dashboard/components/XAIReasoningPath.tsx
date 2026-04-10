@@ -1,14 +1,85 @@
-import { Code2, Search, Share2 } from "lucide-react";
-import { ElementType } from "react";
+import { Code2, Search, Share2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ElementType, useMemo } from "react";
 import type { PatientData } from "../types";
+import {
+  ReactFlow,
+  Controls,
+  Background,
+  Handle,
+  Position,
+  Node,
+  Edge,
+  MarkerType,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 
-interface ReasoningStep {
-  icon: ElementType;
+interface NodeData {
+  icon: ElementType | null;
   title: string;
-  source: string;
+  source?: string;
   content: string;
   link?: string;
+  isRoot?: boolean;
 }
+
+const CustomNode = ({ data }: { data: NodeData }) => {
+  const Icon = data.icon;
+  const isRoot = data.isRoot;
+
+  return (
+    <div
+      className={`bg-white border rounded-xl p-4 w-[280px] shadow-sm relative ${
+        isRoot ? "border-orange-300 ring-2 ring-orange-100" : "border-gray-200"
+      }`}
+    >
+      {!isRoot && <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-[#163254] border-none" />}
+
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex items-center gap-2">
+          {Icon && (
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                isRoot ? "bg-orange-100" : "bg-[#163254]"
+              }`}
+            >
+              <Icon className={`w-4 h-4 ${isRoot ? "text-orange-500" : "text-white"}`} />
+            </div>
+          )}
+          <h3
+            className={`text-sm font-semibold leading-tight ${
+              isRoot ? "text-orange-900" : "text-gray-900"
+            }`}
+          >
+            {data.title}
+          </h3>
+        </div>
+        {data.source && (
+          <span className="text-[10px] text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+            {data.source}
+          </span>
+        )}
+      </div>
+
+      <p className="text-xs text-gray-600 leading-relaxed mt-2 whitespace-pre-wrap">
+        {data.content}
+      </p>
+
+      {data.link && (
+        <div className="mt-3 flex items-center gap-1 text-[11px] text-[#163254] hover:underline cursor-pointer border-t border-gray-100 pt-2">
+          <span>↗</span>
+          <span className="truncate">{data.link}</span>
+        </div>
+      )}
+
+      {/* Adding a source handle for children connections */}
+      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-[#163254] border-none opacity-0" />
+    </div>
+  );
+};
+
+const nodeTypes = {
+  custom: CustomNode,
+};
 
 const MED_CORRELATIONS: Array<{
   drugName: string;
@@ -17,6 +88,8 @@ const MED_CORRELATIONS: Array<{
   fdaStat: string;
   icdCode: string;
   differentialNote: string;
+  title: string;
+  message: (drug: string, sym: string) => string;
 }> = [
   {
     drugName: "Lisinopril",
@@ -28,6 +101,8 @@ const MED_CORRELATIONS: Array<{
     icdCode: "BA00.Z – Infecção Aguda das Vias Respiratórias Superiores",
     differentialNote:
       "Sugere descartar infecção respiratória primária antes de confirmar causa iatrogênica.",
+    title: "Potencial Evento Iatrogênico Detectado",
+    message: (drug, sym) => `O ${drug} pode estar causando a ${sym} relatada.`,
   },
   {
     drugName: "Ibuprofeno",
@@ -39,6 +114,8 @@ const MED_CORRELATIONS: Array<{
     icdCode: "DA91 – Gastrite aguda",
     differentialNote:
       "Considerar protetor gástrico (omeprazol) e avaliar descontinuação do AINE.",
+    title: "Risco Gastrointestinal Identificado",
+    message: (drug, sym) => `${drug} pode estar associado a ${sym}.`,
   },
   {
     drugName: "Metformina",
@@ -50,25 +127,24 @@ const MED_CORRELATIONS: Array<{
     icdCode: "DA94 – Diarreia funcional",
     differentialNote:
       "Administrar com alimentos; considerar formulação de liberação prolongada.",
+    title: "Intolerância Gastrointestinal Detectada",
+    message: (drug, sym) => `${drug} pode estar causando ${sym}.`,
   },
 ];
 
-function buildSteps(patient: PatientData): ReasoningStep[] {
+function buildGraphData(patient: PatientData) {
   const meds = patient.medications.map((m) => m.name.trim()).filter(Boolean);
   const symptoms = patient.symptoms.map((s) => s.trim()).filter(Boolean);
 
-  // Procura correlação conhecida medicamento → sintoma
   let matched: (typeof MED_CORRELATIONS)[0] | null = null;
   let matchedDrug = "";
   let matchedSymptom = "";
 
   for (const corr of MED_CORRELATIONS) {
-    const drug = meds.find((m) =>
-      m.toLowerCase().includes(corr.drugName.toLowerCase()),
-    );
+    const drug = meds.find((m) => m.toLowerCase().includes(corr.drugName.toLowerCase()));
     if (!drug) continue;
     const symptom = symptoms.find((s) =>
-      corr.symptomKeywords.some((kw) => s.toLowerCase().includes(kw)),
+      corr.symptomKeywords.some((kw) => s.toLowerCase().includes(kw))
     );
     if (symptom) {
       matched = corr;
@@ -78,64 +154,128 @@ function buildSteps(patient: PatientData): ReasoningStep[] {
     }
   }
 
-  const medList = meds.length > 0 ? meds.join(", ") : "nenhuma medicação registrada";
-  const symptomList = symptoms.length > 0 ? symptoms.join(", ") : "nenhum sintoma registrado";
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  
+  const medList = meds.length > 0 ? meds.join(", ") : "nenhuma medicação";
+  const symptomList = symptoms.length > 0 ? symptoms.join(", ") : "nenhum sintoma";
 
   if (matched) {
-    return [
-      {
+    // Root Node: Conclusion
+    nodes.push({
+      id: "root",
+      type: "custom",
+      position: { x: 300, y: 50 },
+      data: {
+        isRoot: true,
+        icon: AlertTriangle,
+        title: matched.title,
+        content: matched.message(matchedDrug, matchedSymptom),
+      },
+    });
+
+    // Child 1: Iatrogenesis / Pathophysiology
+    nodes.push({
+      id: "child-1",
+      type: "custom",
+      position: { x: 0, y: 250 },
+      data: {
         icon: Code2,
-        title: "Integração de Dados",
+        title: "Fisiopatologia / Mecanismo",
         source: "NIH",
-        content: `Identificada correlação direta entre a medicação atual (${matchedDrug}) e o sintoma relatado (${matchedSymptom}). Fisiopatologia: ${matched.mechanism}`,
+        content: matched.mechanism,
       },
-      {
+    });
+
+    // Child 2: Clinical Evidence
+    nodes.push({
+      id: "child-2",
+      type: "custom",
+      position: { x: 300, y: 250 },
+      data: {
         icon: Search,
-        title: "Referência Cruzada OpenFDA",
+        title: "Evidência Clínica",
         source: "OpenFDA",
-        content: `"Base de dados do FDA: ${matched.fdaStat}"`,
+        content: matched.fdaStat,
       },
-      {
+    });
+
+    // Child 3: Differential Diagnosis
+    nodes.push({
+      id: "child-3",
+      type: "custom",
+      position: { x: 600, y: 250 },
+      data: {
         icon: Share2,
-        title: "Exclusão Diferencial (CID-11 / OMS)",
+        title: "Diagnóstico Diferencial",
         source: "OMS",
-        content: `Lógica diferencial automatizada ${matched.differentialNote}`,
+        content: matched.differentialNote,
         link: `URI CID-11: ${matched.icdCode}`,
       },
-    ];
+    });
+  } else {
+    // Root Node: Conclusion (Safe)
+    nodes.push({
+      id: "root",
+      type: "custom",
+      position: { x: 150, y: 50 },
+      data: {
+        isRoot: true,
+        icon: CheckCircle2,
+        title: "Nenhum Alerta Crítico",
+        content: `Nenhuma correlação iatrogênica direita identificada entre ${medList} e ${symptomList}.`,
+      },
+    });
+
+    // Child 1: Safety Profile
+    nodes.push({
+      id: "child-1",
+      type: "custom",
+      position: { x: 0, y: 250 },
+      data: {
+        icon: Search,
+        title: "Perfil de Segurança",
+        source: "OpenFDA",
+        content: meds.length > 0
+          ? `Medicamentos verificados: ${meds.slice(0, 2).join(" e ")}. Nenhuma interação crítica de alto risco detectada na base de farmacovigilância.`
+          : "Sem medicações para consulta.",
+      },
+    });
+
+    // Child 2: Differential Analysis
+    nodes.push({
+      id: "child-2",
+      type: "custom",
+      position: { x: 300, y: 250 },
+      data: {
+        icon: Share2,
+        title: "Análise Diferencial",
+        source: "OMS",
+        content: symptoms.length > 0
+          ? `Mapeamento diferencial para diagnósticos alternativos via CID-11. Recomenda-se monitoramento para ${symptomList}.`
+          : "Aguardando sintomas para iniciar análise.",
+      },
+    });
   }
 
-  // Sem correlação conhecida: passos genéricos baseados nos dados atuais
-  return [
-    {
-      icon: Code2,
-      title: "Integração de Dados",
-      source: "NIH",
-      content: `Perfil do paciente ${patient.id} (${patient.age} anos, ${patient.gender}) processado. Medicações: ${medList}. Sintomas: ${symptomList}. Nenhuma correlação iatrogênica de alto risco identificada automaticamente.`,
-    },
-    {
-      icon: Search,
-      title: "Referência Cruzada OpenFDA",
-      source: "OpenFDA",
-      content:
-        meds.length > 0
-          ? `Perfil de segurança verificado para ${meds.slice(0, 2).join(" e ")}. Nenhuma interação crítica detectada com os sintomas reportados.`
-          : "Sem medicações para consulta na base OpenFDA.",
-    },
-    {
-      icon: Share2,
-      title: "Análise Diferencial (CID-11 / OMS)",
-      source: "OMS",
-      content:
-        symptoms.length > 0
-          ? `Mapeamento diferencial para: ${symptomList}. Diagnósticos alternativos considerados via CID-11. Monitoramento contínuo recomendado.`
-          : "Aguardando sintomas para iniciar análise diferencial.",
-      link:
-        symptoms.length > 0
-          ? `URI CID-11: Consultar classificação para "${symptoms[0]}"`
-          : undefined,
-    },
-  ];
+  const childIds = matched ? ["child-1", "child-2", "child-3"] : ["child-1", "child-2"];
+  
+  childIds.forEach((childId) => {
+    edges.push({
+      id: `edge-root-${childId}`,
+      source: "root",
+      target: childId,
+      type: "smoothstep",
+      animated: true,
+      style: { stroke: "#163254", strokeWidth: 1.5, opacity: 0.6 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "#163254",
+      },
+    });
+  });
+
+  return { nodes, edges };
 }
 
 interface Props {
@@ -143,67 +283,32 @@ interface Props {
 }
 
 export function XAIReasoningPath({ patient }: Props) {
-  const steps = buildSteps(patient);
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => buildGraphData(patient), [patient]);
+
   return (
-    <div className="flex-1">
-      {/* Cabeçalho */}
-      <div className="flex items-center justify-between mb-5">
+    <div className="flex-1 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden relative min-h-[400px]">
+      <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm z-10 whitespace-nowrap">
         <h2 className="text-base font-semibold text-gray-900">
-          XAI: Raciocínio do Caminho Diagnóstico
+          XAI: Árvore de Raciocínio Diagnóstico
         </h2>
-        {/* Representação visual do grafo */}
-        <div className="relative w-14 h-14 flex-shrink-0">
-          <div className="absolute inset-0 rounded-full border-[1.5px] border-dashed border-gray-300" />
-          <div className="absolute inset-2 rounded-full border-[1.5px] border-[#163254]/25" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-4 h-4 bg-[#163254] rounded-full opacity-80" />
-          </div>
-        </div>
+        <div className="text-xs text-gray-500 hidden md:block">Fluxo interativo</div>
       </div>
-
-      {/* Passos */}
-      <div className="flex flex-col gap-0">
-        {steps.map((step, index) => {
-          const Icon = step.icon;
-          return (
-            <div key={step.title} className="flex gap-4">
-              {/* Ícone + linha conectora */}
-              <div className="flex flex-col items-center">
-                <div className="w-9 h-9 bg-[#163254] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Icon className="w-4 h-4 text-white" />
-                </div>
-                {index < steps.length - 1 && (
-                  <div className="w-px flex-1 min-h-4 bg-gray-200 my-1" />
-                )}
-              </div>
-
-              {/* Card de conteúdo */}
-              <div
-                className={`flex-1 bg-white border border-gray-200 rounded-xl p-4 ${
-                  index < steps.length - 1 ? "mb-3" : ""
-                }`}
-              >
-                <div className="flex items-start justify-between mb-2 gap-2">
-                  <h3 className="text-sm font-semibold text-gray-900 leading-tight">
-                    {step.title}
-                  </h3>
-                  <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-100 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
-                    Fonte: {step.source}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {step.content}
-                </p>
-                {step.link && (
-                  <div className="mt-2 flex items-center gap-1 text-[11px] text-[#163254] hover:underline cursor-pointer">
-                    <span>↗</span>
-                    <span>{step.link}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      
+      <div className="w-full h-[600px] bg-slate-50/50 relative">
+        <ReactFlow
+          nodes={initialNodes}
+          edges={initialEdges}
+          nodeTypes={nodeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.5, includeHiddenNodes: true }}
+          minZoom={0.2}
+          maxZoom={1.5}
+          proOptions={{ hideAttribution: true }}
+          preventScrolling={false}
+        >
+          <Background color="#ccc" gap={16} />
+          <Controls className="!bg-white !shadow-md !border-gray-200" />
+        </ReactFlow>
       </div>
     </div>
   );
