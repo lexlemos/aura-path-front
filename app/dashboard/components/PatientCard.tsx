@@ -81,7 +81,7 @@ export function PatientCard({ initialData, onSave }: Props) {
   const d = editing ? draft : initialData;
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 w-96 flex-shrink-0 self-start">
+    <div className="bg-white rounded-xl border border-gray-200 p-5 w-96 h-full overflow-y-auto">
       {/* Cabeçalho */}
       <div className="flex items-center justify-between mb-4">
         {editing ? (
@@ -140,7 +140,9 @@ export function PatientCard({ initialData, onSave }: Props) {
       {/* Informações básicas */}
       <div className="grid grid-cols-2 gap-4 mb-5">
         <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Idade</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
+            Idade
+          </p>
           {editing ? (
             <input
               className="text-sm font-semibold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent w-full focus:border-[#163254] transition-colors"
@@ -148,23 +150,33 @@ export function PatientCard({ initialData, onSave }: Props) {
               onChange={(e) => setDraft((d) => ({ ...d, age: e.target.value }))}
             />
           ) : (
-            <p className="text-sm font-semibold text-gray-900">{initialData.age}</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {initialData.age}
+            </p>
           )}
         </div>
         <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">Gênero</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">
+            Gênero
+          </p>
           {editing ? (
             <select
               className="text-sm font-semibold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent w-full focus:border-[#163254] transition-colors"
               value={draft.gender}
-              onChange={(e) => setDraft((d) => ({ ...d, gender: e.target.value }))}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, gender: e.target.value }))
+              }
             >
               {["Masculino", "Feminino", "Outro"].map((g) => (
-                <option key={g} value={g}>{g}</option>
+                <option key={g} value={g}>
+                  {g}
+                </option>
               ))}
             </select>
           ) : (
-            <p className="text-sm font-semibold text-gray-900">{initialData.gender}</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {initialData.gender}
+            </p>
           )}
         </div>
       </div>
@@ -243,8 +255,12 @@ export function PatientCard({ initialData, onSave }: Props) {
                   </>
                 ) : (
                   <>
-                    <p className="text-xs font-semibold text-gray-900">{med.name}</p>
-                    <p className="text-[10px] text-gray-400 truncate">{med.form}</p>
+                    <p className="text-xs font-semibold text-gray-900">
+                      {med.name}
+                    </p>
+                    <p className="text-[10px] text-gray-400 truncate">
+                      {med.form}
+                    </p>
                   </>
                 )}
               </div>
@@ -254,7 +270,9 @@ export function PatientCard({ initialData, onSave }: Props) {
                     <input
                       className="text-[10px] text-gray-500 border-b border-gray-200 outline-none bg-transparent text-right w-24 pb-0.5"
                       value={med.frequency}
-                      onChange={(e) => updateMed(i, "frequency", e.target.value)}
+                      onChange={(e) =>
+                        updateMed(i, "frequency", e.target.value)
+                      }
                       placeholder="Frequência"
                     />
                     <button
@@ -265,7 +283,9 @@ export function PatientCard({ initialData, onSave }: Props) {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-[10px] text-gray-400 leading-tight">{med.frequency}</p>
+                  <p className="text-[10px] text-gray-400 leading-tight">
+                    {med.frequency}
+                  </p>
                 )}
               </div>
             </div>
@@ -293,24 +313,36 @@ export function PatientCard({ initialData, onSave }: Props) {
               <input
                 className="text-xl font-bold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent text-center w-full focus:border-[#163254] transition-colors"
                 value={draft.bp}
-                onChange={(e) => setDraft((d) => ({ ...d, bp: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, bp: e.target.value }))
+                }
               />
             ) : (
-              <p className="text-xl font-bold text-gray-900">{initialData.bp}</p>
+              <p className="text-xl font-bold text-gray-900">
+                {initialData.bp}
+              </p>
             )}
-            <p className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">PA MMHG</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">
+              PA MMHG
+            </p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 text-center">
             {editing ? (
               <input
                 className="text-xl font-bold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent text-center w-full focus:border-[#163254] transition-colors"
                 value={draft.pulse}
-                onChange={(e) => setDraft((d) => ({ ...d, pulse: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, pulse: e.target.value }))
+                }
               />
             ) : (
-              <p className="text-xl font-bold text-gray-900">{initialData.pulse}</p>
+              <p className="text-xl font-bold text-gray-900">
+                {initialData.pulse}
+              </p>
             )}
-            <p className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">PULSO BPM</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-wider mt-0.5">
+              PULSO BPM
+            </p>
           </div>
         </div>
       </div>

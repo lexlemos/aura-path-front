@@ -1,8 +1,17 @@
 "use client";
 
 import { useState, useMemo, useCallback, ElementType } from "react";
-import { Code2, Search, Share2, AlertTriangle, CheckCircle2, X, ExternalLink } from "lucide-react";
+import {
+  Code2,
+  Search,
+  Share2,
+  AlertTriangle,
+  CheckCircle2,
+  X,
+  ExternalLink,
+} from "lucide-react";
 import type { PatientData } from "../types";
+import { ActionButtons } from "./ActionButtons";
 import {
   ReactFlow,
   Controls,
@@ -87,8 +96,8 @@ const CustomNode = ({ data, selected }: NodeProps) => {
                 d.isRefOpen
                   ? "border-[#7C3AED]/70 shadow-[#7C3AED]/10 shadow-md"
                   : selected
-                  ? "border-[#7C3AED] shadow-[#7C3AED]/10 shadow-md"
-                  : "hover:border-[#7C3AED]/60 hover:shadow-md"
+                    ? "border-[#7C3AED] shadow-[#7C3AED]/10 shadow-md"
+                    : "hover:border-[#7C3AED]/60 hover:shadow-md"
               }`
         }`}
       >
@@ -103,6 +112,7 @@ const CustomNode = ({ data, selected }: NodeProps) => {
         {!isRoot && (
           <Handle
             type="target"
+            id="tree-top"
             position={Position.Top}
             className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
           />
@@ -151,8 +161,9 @@ const CustomNode = ({ data, selected }: NodeProps) => {
 
         <Handle
           type="source"
+          id="tree-bottom"
           position={Position.Bottom}
-          className="!w-2 !h-2 !bg-[#7C3AED] !border-none opacity-0"
+          className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
         />
       </div>
     </div>
@@ -180,7 +191,9 @@ const ReferenceNode = ({ data }: NodeProps) => {
               Referência & Raciocínio
             </span>
           </div>
-          <h4 className="text-[11px] font-bold text-gray-900 leading-tight">{d.title}</h4>
+          <h4 className="text-[11px] font-bold text-gray-900 leading-tight">
+            {d.title}
+          </h4>
         </div>
         <button
           onClick={(e) => {
@@ -195,7 +208,9 @@ const ReferenceNode = ({ data }: NodeProps) => {
 
       {/* Badge evidência */}
       <div className="px-3 py-1.5 border-b border-gray-100">
-        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${EVIDENCE_BADGE[d.evidenceLevel]}`}>
+        <span
+          className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${EVIDENCE_BADGE[d.evidenceLevel]}`}
+        >
           Evidência {d.evidenceLevel}
         </span>
       </div>
@@ -217,14 +232,23 @@ const ReferenceNode = ({ data }: NodeProps) => {
           </p>
           <div className="space-y-1.5">
             {d.sources.map((src, i) => (
-              <div key={i} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+              <div
+                key={i}
+                className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100"
+              >
                 <ExternalLink className="w-2.5 h-2.5 text-[#7C3AED] flex-shrink-0 mt-0.5" />
                 <div>
                   <div className="flex items-center gap-1 mb-0.5 flex-wrap">
-                    <span className="text-[10px] font-semibold text-gray-900">{src.name}</span>
-                    <span className="text-[8px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">{src.type}</span>
+                    <span className="text-[10px] font-semibold text-gray-900">
+                      {src.name}
+                    </span>
+                    <span className="text-[8px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
+                      {src.type}
+                    </span>
                   </div>
-                  <p className="text-[9px] text-gray-500 leading-relaxed">{src.detail}</p>
+                  <p className="text-[9px] text-gray-500 leading-relaxed">
+                    {src.detail}
+                  </p>
                 </div>
               </div>
             ))}
@@ -276,7 +300,14 @@ const MED_CORRELATIONS: Array<{
   },
   {
     drugName: "Ibuprofeno",
-    symptomKeywords: ["estômago", "estomago", "náusea", "nausea", "gástrica", "gastrite"],
+    symptomKeywords: [
+      "estômago",
+      "estomago",
+      "náusea",
+      "nausea",
+      "gástrica",
+      "gastrite",
+    ],
     mechanism:
       "Inibição não-seletiva da COX-1 reduz síntese de prostaglandinas protetoras da mucosa gástrica.",
     fdaStat:
@@ -311,10 +342,12 @@ function buildGraphData(patient: PatientData) {
   let matchedSymptom = "";
 
   for (const corr of MED_CORRELATIONS) {
-    const drug = meds.find((m) => m.toLowerCase().includes(corr.drugName.toLowerCase()));
+    const drug = meds.find((m) =>
+      m.toLowerCase().includes(corr.drugName.toLowerCase()),
+    );
     if (!drug) continue;
     const symptom = symptoms.find((s) =>
-      corr.symptomKeywords.some((kw) => s.toLowerCase().includes(kw))
+      corr.symptomKeywords.some((kw) => s.toLowerCase().includes(kw)),
     );
     if (symptom) {
       matched = corr;
@@ -326,16 +359,17 @@ function buildGraphData(patient: PatientData) {
 
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  
+
   const medList = meds.length > 0 ? meds.join(", ") : "nenhuma medicação";
-  const symptomList = symptoms.length > 0 ? symptoms.join(", ") : "nenhum sintoma";
+  const symptomList =
+    symptoms.length > 0 ? symptoms.join(", ") : "nenhum sintoma";
 
   if (matched) {
     // Root Node: Conclusion
     nodes.push({
       id: "root",
       type: "custom",
-      position: { x: 340, y: 40 },
+      position: { x: 420, y: 40 },
       data: {
         isRoot: true,
         icon: AlertTriangle,
@@ -345,9 +379,23 @@ function buildGraphData(patient: PatientData) {
           evidenceLevel: "Forte",
           reasoning: `O sistema identificou ${matchedDrug} na lista de medicações ativas e encontrou "${matchedSymptom}" nos sintomas relatados. A correlação farmacológica entre inibidores da ECA e tosse irritativa está documentada em múltiplas bases de dados clínicas e é considerada um evento adverso classe-efeito.`,
           sources: [
-            { name: "UpToDate", type: "Revisão Clínica", detail: "ACE inhibitor-induced cough – Class effect with all agents." },
-            { name: "NIH MedlinePlus", type: "Base de Dados", detail: "Lisinopril: efeitos colaterais e contraindicações." },
-            { name: "ANVISA", type: "Bula Oficial", detail: "Lisinopril – Classe: Inibidor da ECA. Efeito adverso frequente: tosse seca (≥1/10)." },
+            {
+              name: "UpToDate",
+              type: "Revisão Clínica",
+              detail:
+                "ACE inhibitor-induced cough – Class effect with all agents.",
+            },
+            {
+              name: "NIH MedlinePlus",
+              type: "Base de Dados",
+              detail: "Lisinopril: efeitos colaterais e contraindicações.",
+            },
+            {
+              name: "ANVISA",
+              type: "Bula Oficial",
+              detail:
+                "Lisinopril – Classe: Inibidor da ECA. Efeito adverso frequente: tosse seca (≥1/10).",
+            },
           ],
           recommendation: `Considerar substituição de ${matchedDrug} por antagonista do receptor de angiotensina II (ARA-II), como Losartana, que não causa acúmulo de bradicinina.`,
         },
@@ -358,7 +406,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-1",
       type: "custom",
-      position: { x: 60, y: 310 },
+      position: { x: 60, y: 340 },
       data: {
         icon: Code2,
         title: "Fisiopatologia / Mecanismo",
@@ -368,10 +416,21 @@ function buildGraphData(patient: PatientData) {
           evidenceLevel: "Forte",
           reasoning: `Os inibidores da ECA (iECA) bloqueiam a enzima conversora de angiotensina, impedindo a degradação da bradicinina. O acúmulo de bradicinina na mucosa traqueobrônquica estimula receptores B2, causando tosse reflexa não produtiva. Esse mecanismo é independente da dose e afeta todos os iECA.`,
           sources: [
-            { name: "NEJM", type: "Artigo Científico", detail: "Israili & Hall (1992) – Cough and angioneurotic edema associated with ACE inhibitor therapy. Ann Int Med." },
-            { name: "PubMed (NCBI)", type: "Revisão Sistemática", detail: "PMID: 1567463 – Bradykinin-mediated cough in hypertensive patients." },
+            {
+              name: "NEJM",
+              type: "Artigo Científico",
+              detail:
+                "Israili & Hall (1992) – Cough and angioneurotic edema associated with ACE inhibitor therapy. Ann Int Med.",
+            },
+            {
+              name: "PubMed (NCBI)",
+              type: "Revisão Sistemática",
+              detail:
+                "PMID: 1567463 – Bradykinin-mediated cough in hypertensive patients.",
+            },
           ],
-          recommendation: "Dados fisiopatológicos confirmam relação causal. Avaliação clínica recomendada para decisão terapêutica.",
+          recommendation:
+            "Dados fisiopatológicos confirmam relação causal. Avaliação clínica recomendada para decisão terapêutica.",
         },
       },
     });
@@ -380,7 +439,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-2",
       type: "custom",
-      position: { x: 380, y: 310 },
+      position: { x: 420, y: 340 },
       data: {
         icon: Search,
         title: "Evidência Clínica",
@@ -390,10 +449,21 @@ function buildGraphData(patient: PatientData) {
           evidenceLevel: "Forte",
           reasoning: `Dados de farmacovigilância da FDA (FAERS – FDA Adverse Event Reporting System) mostram consistência na relação causal. A incidência de tosse induzida por iECA varia de 5% a 35% dependendo da etnia e genética do paciente, com maior prevalência em populações asiáticas.`,
           sources: [
-            { name: "FDA FAERS", type: "Banco de Dados de Farmacovigilância", detail: "OpenFDA FAERS API – adverse event reports: lisinopril + cough (2020-2025)." },
-            { name: "British Medical Journal", type: "Meta-análise", detail: "Woo & Nicholls (2000) – Incidence and risk factors for ACE inhibitor cough in hypertensive patients." },
+            {
+              name: "FDA FAERS",
+              type: "Banco de Dados de Farmacovigilância",
+              detail:
+                "OpenFDA FAERS API – adverse event reports: lisinopril + cough (2020-2025).",
+            },
+            {
+              name: "British Medical Journal",
+              type: "Meta-análise",
+              detail:
+                "Woo & Nicholls (2000) – Incidence and risk factors for ACE inhibitor cough in hypertensive patients.",
+            },
           ],
-          recommendation: "Incidência expressiva justifica investigação imediata e provável substituição do fármaco.",
+          recommendation:
+            "Incidência expressiva justifica investigação imediata e provável substituição do fármaco.",
         },
       },
     });
@@ -402,7 +472,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-3",
       type: "custom",
-      position: { x: 700, y: 310 },
+      position: { x: 780, y: 340 },
       data: {
         icon: Share2,
         title: "Diagnóstico Diferencial",
@@ -413,10 +483,21 @@ function buildGraphData(patient: PatientData) {
           evidenceLevel: "Moderada",
           reasoning: `Antes de atribuir a tosse exclusivamente ao iECA, o protocolo clínico recomenda excluir: (1) infecção respiratória ativa (CID-11 BA00.Z), (2) asma ou hiperreatividade brônquica, (3) refluxo gastroesofágico com aspiração laríngea. O diagnóstico de exclusão é necessário para não suspender a medicação desnecessariamente.`,
           sources: [
-            { name: "OMS CID-11", type: "Classificação Internacional", detail: "BA00.Z – Infecção aguda das vias respiratórias superiores, não especificada." },
-            { name: "GINA Guidelines", type: "Diretriz Clínica", detail: "Global Initiative for Asthma – Differential diagnosis of chronic cough (2024)." },
+            {
+              name: "OMS CID-11",
+              type: "Classificação Internacional",
+              detail:
+                "BA00.Z – Infecção aguda das vias respiratórias superiores, não especificada.",
+            },
+            {
+              name: "GINA Guidelines",
+              type: "Diretriz Clínica",
+              detail:
+                "Global Initiative for Asthma – Differential diagnosis of chronic cough (2024).",
+            },
           ],
-          recommendation: "Solicitar anamnese detalhada, ausculta pulmonar e, se necessário, espirometria antes de classificar como iatrogenesia.",
+          recommendation:
+            "Solicitar anamnese detalhada, ausculta pulmonar e, se necessário, espirometria antes de classificar como iatrogenesia.",
         },
       },
     });
@@ -425,7 +506,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "root",
       type: "custom",
-      position: { x: 200, y: 40 },
+      position: { x: 240, y: 40 },
       data: {
         isRoot: true,
         icon: CheckCircle2,
@@ -435,10 +516,20 @@ function buildGraphData(patient: PatientData) {
           evidenceLevel: "Moderada",
           reasoning: `A análise cruzou medicações (${medList}) com sintomas (${symptomList}) usando as bases NIH, OpenFDA FAERS e CID-11. Nenhuma das combinações ativas atingiu o limiar de correlação causal definido no protocolo de farmacovigilância automatizada.`,
           sources: [
-            { name: "OpenFDA FAERS", type: "Banco de Dados", detail: "Análise de eventos adversos para os fármacos registrados." },
-            { name: "NIH DailyMed", type: "Base de Bulas", detail: "Perfil de segurança consultado para cada medicamento." },
+            {
+              name: "OpenFDA FAERS",
+              type: "Banco de Dados",
+              detail:
+                "Análise de eventos adversos para os fármacos registrados.",
+            },
+            {
+              name: "NIH DailyMed",
+              type: "Base de Bulas",
+              detail: "Perfil de segurança consultado para cada medicamento.",
+            },
           ],
-          recommendation: "Manter monitoramento. Reavalie se novos sintomas forem reportados.",
+          recommendation:
+            "Manter monitoramento. Reavalie se novos sintomas forem reportados.",
         },
       },
     });
@@ -446,19 +537,25 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-1",
       type: "custom",
-      position: { x: 60, y: 310 },
+      position: { x: 60, y: 340 },
       data: {
         icon: Search,
         title: "Perfil de Segurança",
         source: "OpenFDA",
-        content: meds.length > 0
-          ? `Medicamentos verificados: ${meds.slice(0, 2).join(" e ")}. Nenhuma interação crítica detectada.`
-          : "Sem medicações para consulta.",
+        content:
+          meds.length > 0
+            ? `Medicamentos verificados: ${meds.slice(0, 2).join(" e ")}. Nenhuma interação crítica detectada.`
+            : "Sem medicações para consulta.",
         reference: {
           evidenceLevel: "Moderada",
           reasoning: `O perfil de farmacovigilância dos medicamentos registrados foi consultado no OpenFDA FAERS. Nenhum evento adverso sério foi identificado para as combinações atuais.`,
           sources: [
-            { name: "OpenFDA FAERS", type: "Banco de Dados", detail: "FDA Adverse Event Reporting System – consulta automatizada." },
+            {
+              name: "OpenFDA FAERS",
+              type: "Banco de Dados",
+              detail:
+                "FDA Adverse Event Reporting System – consulta automatizada.",
+            },
           ],
         },
       },
@@ -467,36 +564,46 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-2",
       type: "custom",
-      position: { x: 380, y: 310 },
+      position: { x: 420, y: 340 },
       data: {
         icon: Share2,
         title: "Análise Diferencial",
         source: "OMS",
-        content: symptoms.length > 0
-          ? `Mapeamento diferencial para ${symptomList} via CID-11. Monitoramento recomendado.`
-          : "Aguardando sintomas para análise.",
+        content:
+          symptoms.length > 0
+            ? `Mapeamento diferencial para ${symptomList} via CID-11. Monitoramento recomendado.`
+            : "Aguardando sintomas para análise.",
         reference: {
           evidenceLevel: "Baixa",
           reasoning: `Sem correlação medicamentosa identificada, os sintomas foram mapeados isoladamente na CID-11 para fins de diagnóstico diferencial. A análise tem confiança reduzida por ausência de padrão iatrogênico confirmado.`,
           sources: [
-            { name: "OMS CID-11", type: "Classificação Internacional", detail: "Mapeamento automático de sintomas para códigos diagnósticos." },
+            {
+              name: "OMS CID-11",
+              type: "Classificação Internacional",
+              detail:
+                "Mapeamento automático de sintomas para códigos diagnósticos.",
+            },
           ],
-          recommendation: "Consulta médica presencial recomendada para avaliação clínica completa.",
+          recommendation:
+            "Consulta médica presencial recomendada para avaliação clínica completa.",
         },
       },
     });
   }
 
-  const childIds = matched ? ["child-1", "child-2", "child-3"] : ["child-1", "child-2"];
-  
+  const childIds = matched
+    ? ["child-1", "child-2", "child-3"]
+    : ["child-1", "child-2"];
+
   childIds.forEach((childId) => {
     edges.push({
       id: `edge-root-${childId}`,
       source: "root",
+      sourceHandle: "tree-bottom",
       target: childId,
-      type: "smoothstep",
-      animated: true,
-      style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.5 },
+      targetHandle: "tree-top",
+      type: "default",
+      style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.6 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
         color: "#7C3AED",
@@ -578,7 +685,7 @@ export function XAIReasoningPath({ patient }: Props) {
   }, [baseGraph, openRefs, toggleRef]);
 
   return (
-    <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden min-h-[400px]">
+    <div className="w-full flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Cabeçalho */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm flex-shrink-0">
         <h2 className="text-base font-semibold text-gray-900">
@@ -594,7 +701,7 @@ export function XAIReasoningPath({ patient }: Props) {
       </div>
 
       {/* Diagrama ReactFlow */}
-      <div className="flex-1 h-[600px] bg-slate-50/50">
+      <div className="w-full h-[640px] bg-slate-50/50">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -610,6 +717,11 @@ export function XAIReasoningPath({ patient }: Props) {
           <Background color="#e5e7eb" gap={16} />
           <Controls className="!bg-white !shadow-md !border-gray-200" />
         </ReactFlow>
+      </div>
+
+      {/* Action Buttons dentro do card */}
+      <div>
+        <ActionButtons />
       </div>
     </div>
   );
