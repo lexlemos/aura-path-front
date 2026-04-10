@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Code2, Search, Share2, AlertTriangle, CheckCircle2, BookOpen, X, ExternalLink } from "lucide-react";
-import { ElementType, useMemo } from "react";
+import { useState, useMemo, useCallback, ElementType } from "react";
+import { Code2, Search, Share2, AlertTriangle, CheckCircle2, X, ExternalLink } from "lucide-react";
 import type { PatientData } from "../types";
 import {
   ReactFlow,
@@ -13,6 +12,7 @@ import {
   Node,
   Edge,
   MarkerType,
+  NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -31,6 +31,17 @@ interface NodeData {
   link?: string;
   isRoot?: boolean;
   reference?: NodeReference;
+  onRefClick?: () => void;
+  isRefOpen?: boolean;
+}
+
+interface RefNodeData {
+  title: string;
+  evidenceLevel: "Forte" | "Moderada" | "Baixa";
+  reasoning: string;
+  sources: Array<{ name: string; type: string; detail: string }>;
+  recommendation?: string;
+  onClose?: () => void;
 }
 
 const EVIDENCE_BADGE: Record<string, string> = {
@@ -39,89 +50,205 @@ const EVIDENCE_BADGE: Record<string, string> = {
   Baixa: "bg-gray-100 text-gray-600 border-gray-200",
 };
 
-const CustomNode = ({
-  data,
-  selected,
-}: {
-  data: NodeData;
-  selected: boolean;
-}) => {
-  const Icon = data.icon;
-  const isRoot = data.isRoot;
+const CustomNode = ({ data, selected }: NodeProps) => {
+  const d = data as unknown as NodeData;
+  const Icon = d.icon;
+  const isRoot = d.isRoot;
 
   return (
-    <div
-      className={`bg-white border rounded-xl p-4 w-[280px] shadow-sm relative cursor-pointer transition-all duration-150 ${
-        isRoot
-          ? `border-orange-300 ring-2 ${selected ? "ring-orange-400" : "ring-orange-100"}`
-          : `border-gray-200 ${selected ? "ring-2 ring-[#163254]/40" : "hover:border-[#163254]/30 hover:shadow-md"}`
-      }`}
-    >
-      {!isRoot && (
-        <Handle
-          type="target"
-          position={Position.Top}
-          className="w-2 h-2 !bg-[#163254] border-none"
-        />
+    <div className="relative">
+      {/* Bolinha ? lateral — abre/fecha nó de referência */}
+      {d.reference && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              d.onRefClick?.();
+            }}
+            className={`absolute -left-12 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full text-white text-sm font-bold flex items-center justify-center shadow-md transition-all z-10 ${
+              d.isRefOpen
+                ? "bg-[#6D28D9] ring-2 ring-[#7C3AED]/30"
+                : "bg-[#7C3AED] hover:bg-[#6D28D9]"
+            }`}
+            title={d.isRefOpen ? "Fechar referência" : "Ver referência"}
+          >
+            ?
+          </button>
+          {/* linha entre ? e borda do card */}
+          <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-4 h-px bg-[#7C3AED]/40" />
+        </>
       )}
 
-      <div className="flex items-start justify-between mb-2 gap-2">
-        <div className="flex items-center gap-2">
+      <div
+        className={`bg-white border-2 rounded-xl p-4 w-[280px] shadow-sm relative transition-all duration-150 ${
+          isRoot
+            ? `border-orange-400 ${selected ? "shadow-orange-200 shadow-md" : ""}`
+            : `border-[#7C3AED]/30 ${
+                d.isRefOpen
+                  ? "border-[#7C3AED]/70 shadow-[#7C3AED]/10 shadow-md"
+                  : selected
+                  ? "border-[#7C3AED] shadow-[#7C3AED]/10 shadow-md"
+                  : "hover:border-[#7C3AED]/60 hover:shadow-md"
+              }`
+        }`}
+      >
+        {/* Handle invisível para aresta do nó de referência (vem da esquerda) */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          id="ref-left"
+          className="!w-2 !h-2 !bg-[#7C3AED] !border-none opacity-0"
+        />
+
+        {!isRoot && (
+          <Handle
+            type="target"
+            position={Position.Top}
+            className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
+          />
+        )}
+
+        <div className="flex items-start gap-2 mb-2">
           {Icon && (
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isRoot ? "bg-orange-100" : "bg-[#163254]"
+                isRoot ? "bg-orange-100" : "bg-[#7C3AED]/10"
               }`}
             >
               <Icon
-                className={`w-4 h-4 ${isRoot ? "text-orange-500" : "text-white"}`}
+                className={`w-4 h-4 ${isRoot ? "text-orange-500" : "text-[#7C3AED]"}`}
               />
             </div>
           )}
-          <h3
-            className={`text-sm font-semibold leading-tight ${
-              isRoot ? "text-orange-900" : "text-gray-900"
-            }`}
-          >
-            {data.title}
-          </h3>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h3
+                className={`text-sm font-semibold leading-tight ${
+                  isRoot ? "text-orange-900" : "text-gray-900"
+                }`}
+              >
+                {d.title}
+              </h3>
+              {d.source && (
+                <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                  {d.source}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        {data.source && (
-          <span className="text-[10px] text-gray-500 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
-            {data.source}
-          </span>
+
+        <p className="text-xs text-gray-600 leading-relaxed text-justify">
+          {d.content}
+        </p>
+
+        {d.link && (
+          <div className="mt-2 flex items-center gap-1 text-[11px] text-[#7C3AED] hover:underline cursor-pointer border-t border-gray-100 pt-2">
+            <span>↗</span>
+            <span className="truncate">{d.link}</span>
+          </div>
         )}
+
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          className="!w-2 !h-2 !bg-[#7C3AED] !border-none opacity-0"
+        />
       </div>
+    </div>
+  );
+};
 
-      <p className="text-xs text-gray-600 leading-relaxed mt-2 whitespace-pre-wrap">
-        {data.content}
-      </p>
-
-      {data.link && (
-        <div className="mt-3 flex items-center gap-1 text-[11px] text-[#163254] hover:underline cursor-pointer border-t border-gray-100 pt-2">
-          <span>↗</span>
-          <span className="truncate">{data.link}</span>
-        </div>
-      )}
-
-      {data.reference && (
-        <div className="mt-2 pt-2 border-t border-gray-100 flex items-center gap-1.5 text-[11px] text-[#163254]/70 hover:text-[#163254] transition-colors">
-          <BookOpen className="w-3 h-3 flex-shrink-0" />
-          <span>Ver referência e raciocínio</span>
-        </div>
-      )}
-
+const ReferenceNode = ({ data }: NodeProps) => {
+  const d = data as unknown as RefNodeData;
+  return (
+    <div className="bg-white border-2 border-[#7C3AED]/30 rounded-xl shadow-md w-[300px] overflow-hidden">
       <Handle
         type="source"
-        position={Position.Bottom}
-        className="w-2 h-2 !bg-[#163254] border-none opacity-0"
+        position={Position.Right}
+        className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
       />
+
+      {/* Header */}
+      <div className="flex items-start justify-between p-3 border-b border-gray-100">
+        <div className="flex-1 min-w-0 pr-2">
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="w-4 h-4 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
+              ?
+            </div>
+            <span className="text-[9px] text-gray-400 uppercase tracking-wider">
+              Referência & Raciocínio
+            </span>
+          </div>
+          <h4 className="text-[11px] font-bold text-gray-900 leading-tight">{d.title}</h4>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            d.onClose?.();
+          }}
+          className="p-0.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors flex-shrink-0 mt-0.5"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Badge evidência */}
+      <div className="px-3 py-1.5 border-b border-gray-100">
+        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${EVIDENCE_BADGE[d.evidenceLevel]}`}>
+          Evidência {d.evidenceLevel}
+        </span>
+      </div>
+
+      {/* Corpo */}
+      <div className="p-3 space-y-3 max-h-[320px] overflow-y-auto">
+        <div>
+          <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">
+            Por que esta sugestão?
+          </p>
+          <p className="text-[10px] text-gray-700 leading-relaxed text-justify">
+            {d.reasoning}
+          </p>
+        </div>
+
+        <div>
+          <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1.5">
+            Fontes consultadas
+          </p>
+          <div className="space-y-1.5">
+            {d.sources.map((src, i) => (
+              <div key={i} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100">
+                <ExternalLink className="w-2.5 h-2.5 text-[#7C3AED] flex-shrink-0 mt-0.5" />
+                <div>
+                  <div className="flex items-center gap-1 mb-0.5 flex-wrap">
+                    <span className="text-[10px] font-semibold text-gray-900">{src.name}</span>
+                    <span className="text-[8px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">{src.type}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-500 leading-relaxed">{src.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {d.recommendation && (
+          <div className="p-2 bg-[#7C3AED]/5 border border-[#7C3AED]/15 rounded-lg">
+            <p className="text-[9px] text-[#7C3AED]/70 uppercase tracking-wider mb-0.5">
+              Recomendação clínica
+            </p>
+            <p className="text-[10px] text-[#7C3AED] leading-relaxed font-medium text-justify">
+              {d.recommendation}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const nodeTypes = {
   custom: CustomNode,
+  reference: ReferenceNode,
 };
 
 const MED_CORRELATIONS: Array<{
@@ -208,7 +335,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "root",
       type: "custom",
-      position: { x: 300, y: 50 },
+      position: { x: 340, y: 40 },
       data: {
         isRoot: true,
         icon: AlertTriangle,
@@ -231,7 +358,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-1",
       type: "custom",
-      position: { x: 0, y: 280 },
+      position: { x: 60, y: 310 },
       data: {
         icon: Code2,
         title: "Fisiopatologia / Mecanismo",
@@ -253,7 +380,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-2",
       type: "custom",
-      position: { x: 320, y: 280 },
+      position: { x: 380, y: 310 },
       data: {
         icon: Search,
         title: "Evidência Clínica",
@@ -275,7 +402,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-3",
       type: "custom",
-      position: { x: 640, y: 280 },
+      position: { x: 700, y: 310 },
       data: {
         icon: Share2,
         title: "Diagnóstico Diferencial",
@@ -298,7 +425,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "root",
       type: "custom",
-      position: { x: 150, y: 50 },
+      position: { x: 200, y: 40 },
       data: {
         isRoot: true,
         icon: CheckCircle2,
@@ -319,7 +446,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-1",
       type: "custom",
-      position: { x: 0, y: 280 },
+      position: { x: 60, y: 310 },
       data: {
         icon: Search,
         title: "Perfil de Segurança",
@@ -340,7 +467,7 @@ function buildGraphData(patient: PatientData) {
     nodes.push({
       id: "child-2",
       type: "custom",
-      position: { x: 320, y: 280 },
+      position: { x: 380, y: 310 },
       data: {
         icon: Share2,
         title: "Análise Diferencial",
@@ -369,10 +496,10 @@ function buildGraphData(patient: PatientData) {
       target: childId,
       type: "smoothstep",
       animated: true,
-      style: { stroke: "#163254", strokeWidth: 1.5, opacity: 0.6 },
+      style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.5 },
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "#163254",
+        color: "#7C3AED",
       },
     });
   });
@@ -385,150 +512,105 @@ interface Props {
 }
 
 export function XAIReasoningPath({ patient }: Props) {
-  const { nodes: initialNodes, edges: initialEdges } = useMemo(
-    () => buildGraphData(patient),
-    [patient],
-  );
-  const [selectedRef, setSelectedRef] = useState<{
-    title: string;
-    ref: NodeReference;
-  } | null>(null);
+  const [openRefs, setOpenRefs] = useState<Set<string>>(new Set());
 
-  function handleNodeClick(_: React.MouseEvent, node: Node) {
-    const data = node.data as unknown as NodeData;
-    if (data.reference) {
-      setSelectedRef({ title: data.title, ref: data.reference });
+  const baseGraph = useMemo(() => buildGraphData(patient), [patient]);
+
+  const toggleRef = useCallback((nodeId: string) => {
+    setOpenRefs((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+  }, []);
+
+  const { nodes, edges } = useMemo(() => {
+    const mainNodes = baseGraph.nodes.map((n) => ({
+      ...n,
+      data: {
+        ...n.data,
+        onRefClick: n.data.reference ? () => toggleRef(n.id) : undefined,
+        isRefOpen: openRefs.has(n.id),
+      },
+    }));
+
+    const refNodes: Node[] = [];
+    const refEdges: Edge[] = [];
+
+    for (const n of baseGraph.nodes) {
+      if (openRefs.has(n.id) && n.data.reference) {
+        refNodes.push({
+          id: `ref-${n.id}`,
+          type: "reference",
+          position: {
+            x: n.position.x - 360,
+            y: n.position.y,
+          },
+          data: {
+            ...(n.data.reference as NodeReference),
+            title: n.data.title as string,
+            onClose: () => toggleRef(n.id),
+          },
+        });
+        refEdges.push({
+          id: `edge-ref-${n.id}`,
+          source: `ref-${n.id}`,
+          target: n.id,
+          targetHandle: "ref-left",
+          type: "straight",
+          style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.5 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: "#7C3AED",
+          },
+        });
+      }
     }
-  }
+
+    return {
+      nodes: [...mainNodes, ...refNodes],
+      edges: [...baseGraph.edges, ...refEdges],
+    };
+  }, [baseGraph, openRefs, toggleRef]);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden relative min-h-[400px]">
-      <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm z-10 whitespace-nowrap">
+    <div className="flex-1 flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden min-h-[400px]">
+      {/* Cabeçalho */}
+      <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm flex-shrink-0">
         <h2 className="text-base font-semibold text-gray-900">
           XAI: Árvore de Raciocínio Diagnóstico
         </h2>
         <div className="text-xs text-gray-500 hidden md:block">
-          Clique em um nó para ver a referência
+          Clique no{" "}
+          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#7C3AED] text-white text-[10px] font-bold mx-0.5">
+            ?
+          </span>{" "}
+          para expandir a referência como nó
         </div>
       </div>
 
-      <div className="w-full h-[600px] bg-slate-50/50 relative">
+      {/* Diagrama ReactFlow */}
+      <div className="flex-1 h-[600px] bg-slate-50/50">
         <ReactFlow
-          nodes={initialNodes}
-          edges={initialEdges}
+          nodes={nodes}
+          edges={edges}
           nodeTypes={nodeTypes}
-          onNodeClick={handleNodeClick}
           fitView
-          fitViewOptions={{ padding: 0.5, includeHiddenNodes: true }}
-          minZoom={0.2}
+          fitViewOptions={{ padding: 0.6, includeHiddenNodes: true }}
+          minZoom={0.15}
           maxZoom={1.5}
           proOptions={{ hideAttribution: true }}
           preventScrolling={false}
+          nodesDraggable={false}
         >
-          <Background color="#ccc" gap={16} />
+          <Background color="#e5e7eb" gap={16} />
           <Controls className="!bg-white !shadow-md !border-gray-200" />
         </ReactFlow>
       </div>
-
-      {/* Painel de referência (overlay) */}
-      {selectedRef && (
-        <div className="absolute inset-0 z-20 flex items-end sm:items-center justify-center bg-black/30 backdrop-blur-[1px]">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 mb-4 sm:mb-0 overflow-hidden">
-            {/* Header */}
-            <div className="flex items-start justify-between p-5 border-b border-gray-100">
-              <div className="flex-1 min-w-0 pr-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <BookOpen className="w-4 h-4 text-[#163254] flex-shrink-0" />
-                  <span className="text-[11px] text-gray-400 uppercase tracking-wider">
-                    Referência & Raciocínio
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold text-gray-900 leading-tight">
-                  {selectedRef.title}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span
-                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${EVIDENCE_BADGE[selectedRef.ref.evidenceLevel]}`}
-                >
-                  Evidência {selectedRef.ref.evidenceLevel}
-                </span>
-                <button
-                  onClick={() => setSelectedRef(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
-              {/* Raciocínio */}
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">
-                  Por que esta sugestão?
-                </p>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  {selectedRef.ref.reasoning}
-                </p>
-              </div>
-
-              {/* Fontes */}
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
-                  Fontes consultadas
-                </p>
-                <div className="space-y-2">
-                  {selectedRef.ref.sources.map((src, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-[#163254] flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-xs font-semibold text-gray-900">
-                            {src.name}
-                          </span>
-                          <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
-                            {src.type}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-gray-500 leading-relaxed">
-                          {src.detail}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Recomendação */}
-              {selectedRef.ref.recommendation && (
-                <div className="p-3 bg-[#163254]/5 border border-[#163254]/15 rounded-lg">
-                  <p className="text-[10px] text-[#163254]/70 uppercase tracking-wider mb-1">
-                    Recomendação clínica
-                  </p>
-                  <p className="text-xs text-[#163254] leading-relaxed font-medium">
-                    {selectedRef.ref.recommendation}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
-              <button
-                onClick={() => setSelectedRef(null)}
-                className="w-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                Fechar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
