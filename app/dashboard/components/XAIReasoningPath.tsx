@@ -1,5 +1,6 @@
 import { Code2, Search, Share2 } from "lucide-react";
 import { ElementType } from "react";
+import type { PatientData } from "../types";
 
 interface ReasoningStep {
   icon: ElementType;
@@ -9,32 +10,140 @@ interface ReasoningStep {
   link?: string;
 }
 
-const steps: ReasoningStep[] = [
+const MED_CORRELATIONS: Array<{
+  drugName: string;
+  symptomKeywords: string[];
+  mechanism: string;
+  fdaStat: string;
+  icdCode: string;
+  differentialNote: string;
+}> = [
   {
-    icon: Code2,
-    title: "Integração de Dados",
-    source: "NIH",
-    content:
-      "Identificada correlação direta entre a medicação atual (Lisinopril) e o novo sintoma relatado (Tosse Seca). Fisiopatologia: Tosse induzida por inibidores da ECA via acúmulo de bradicinina.",
+    drugName: "Lisinopril",
+    symptomKeywords: ["tosse", "tosse seca", "tosse irritativa"],
+    mechanism:
+      "Tosse induzida por inibidores da ECA via acúmulo de bradicinina na mucosa traqueobrônquica.",
+    fdaStat:
+      "15% dos pacientes em uso de Lisinopril relatam tosse como efeito colateral primário nos primeiros 6 meses de titulação.",
+    icdCode: "BA00.Z – Infecção Aguda das Vias Respiratórias Superiores",
+    differentialNote:
+      "Sugere descartar infecção respiratória primária antes de confirmar causa iatrogênica.",
   },
   {
-    icon: Search,
-    title: "Referência Cruzada OpenFDA",
-    source: "OpenFDA",
-    content:
-      '"Base de dados do FDA: 15% dos pacientes em uso de Lisinopril relatam este sintoma como efeito colateral primário nos primeiros 6 meses de titulação."',
+    drugName: "Ibuprofeno",
+    symptomKeywords: ["estômago", "estomago", "náusea", "nausea", "gástrica", "gastrite"],
+    mechanism:
+      "Inibição não-seletiva da COX-1 reduz síntese de prostaglandinas protetoras da mucosa gástrica.",
+    fdaStat:
+      "Uso prolongado de AINEs aumenta em 3–5× o risco de úlcera péptica e sintomas gastrointestinais.",
+    icdCode: "DA91 – Gastrite aguda",
+    differentialNote:
+      "Considerar protetor gástrico (omeprazol) e avaliar descontinuação do AINE.",
   },
   {
-    icon: Share2,
-    title: "Exclusão Diferencial (CID-11 / OMS)",
-    source: "OMS",
-    content:
-      "Lógica diferencial automatizada sugere descartar infecção respiratória primária antes de confirmar causa iatrogênica.",
-    link: "URI CID-11: BA00.Z (Infecção Aguda das Vias Respiratórias Superiores)",
+    drugName: "Metformina",
+    symptomKeywords: ["náusea", "nausea", "diarreia", "vômito", "enjoo"],
+    mechanism:
+      "Metformina reduz absorção intestinal de glicose; intolerância gastrointestinal é dose-dependente.",
+    fdaStat:
+      "30% dos pacientes relatam efeitos GI no início do tratamento com Metformina.",
+    icdCode: "DA94 – Diarreia funcional",
+    differentialNote:
+      "Administrar com alimentos; considerar formulação de liberação prolongada.",
   },
 ];
 
-export function XAIReasoningPath() {
+function buildSteps(patient: PatientData): ReasoningStep[] {
+  const meds = patient.medications.map((m) => m.name.trim()).filter(Boolean);
+  const symptoms = patient.symptoms.map((s) => s.trim()).filter(Boolean);
+
+  // Procura correlação conhecida medicamento → sintoma
+  let matched: (typeof MED_CORRELATIONS)[0] | null = null;
+  let matchedDrug = "";
+  let matchedSymptom = "";
+
+  for (const corr of MED_CORRELATIONS) {
+    const drug = meds.find((m) =>
+      m.toLowerCase().includes(corr.drugName.toLowerCase()),
+    );
+    if (!drug) continue;
+    const symptom = symptoms.find((s) =>
+      corr.symptomKeywords.some((kw) => s.toLowerCase().includes(kw)),
+    );
+    if (symptom) {
+      matched = corr;
+      matchedDrug = drug;
+      matchedSymptom = symptom;
+      break;
+    }
+  }
+
+  const medList = meds.length > 0 ? meds.join(", ") : "nenhuma medicação registrada";
+  const symptomList = symptoms.length > 0 ? symptoms.join(", ") : "nenhum sintoma registrado";
+
+  if (matched) {
+    return [
+      {
+        icon: Code2,
+        title: "Integração de Dados",
+        source: "NIH",
+        content: `Identificada correlação direta entre a medicação atual (${matchedDrug}) e o sintoma relatado (${matchedSymptom}). Fisiopatologia: ${matched.mechanism}`,
+      },
+      {
+        icon: Search,
+        title: "Referência Cruzada OpenFDA",
+        source: "OpenFDA",
+        content: `"Base de dados do FDA: ${matched.fdaStat}"`,
+      },
+      {
+        icon: Share2,
+        title: "Exclusão Diferencial (CID-11 / OMS)",
+        source: "OMS",
+        content: `Lógica diferencial automatizada ${matched.differentialNote}`,
+        link: `URI CID-11: ${matched.icdCode}`,
+      },
+    ];
+  }
+
+  // Sem correlação conhecida: passos genéricos baseados nos dados atuais
+  return [
+    {
+      icon: Code2,
+      title: "Integração de Dados",
+      source: "NIH",
+      content: `Perfil do paciente ${patient.id} (${patient.age} anos, ${patient.gender}) processado. Medicações: ${medList}. Sintomas: ${symptomList}. Nenhuma correlação iatrogênica de alto risco identificada automaticamente.`,
+    },
+    {
+      icon: Search,
+      title: "Referência Cruzada OpenFDA",
+      source: "OpenFDA",
+      content:
+        meds.length > 0
+          ? `Perfil de segurança verificado para ${meds.slice(0, 2).join(" e ")}. Nenhuma interação crítica detectada com os sintomas reportados.`
+          : "Sem medicações para consulta na base OpenFDA.",
+    },
+    {
+      icon: Share2,
+      title: "Análise Diferencial (CID-11 / OMS)",
+      source: "OMS",
+      content:
+        symptoms.length > 0
+          ? `Mapeamento diferencial para: ${symptomList}. Diagnósticos alternativos considerados via CID-11. Monitoramento contínuo recomendado.`
+          : "Aguardando sintomas para iniciar análise diferencial.",
+      link:
+        symptoms.length > 0
+          ? `URI CID-11: Consultar classificação para "${symptoms[0]}"`
+          : undefined,
+    },
+  ];
+}
+
+interface Props {
+  patient: PatientData;
+}
+
+export function XAIReasoningPath({ patient }: Props) {
+  const steps = buildSteps(patient);
   return (
     <div className="flex-1">
       {/* Cabeçalho */}
