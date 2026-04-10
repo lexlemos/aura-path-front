@@ -12,9 +12,9 @@ export function TopNav() {
         <Image
           src="/assets/logo_horizontal.png"
           alt="Aura Path"
-          width={110}
-          height={30}
-          className="object-contain"
+          width={1671}
+          height={940}
+          className="h-8 w-auto object-contain"
           priority
         />
         <nav className="flex items-center gap-6 h-14">
