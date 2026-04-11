@@ -6,7 +6,7 @@ export function ActionButtons() {
       <button className="text-sm text-gray-600 border border-gray-300 px-4 py-2.5 rounded-lg hover:bg-gray-50 transition-colors">
         Descartar (Suposição incorreta da IA)
       </button>
-      <button className="flex items-center gap-2 text-sm font-medium bg-[#163254] hover:bg-[#1e3d68] text-white px-5 py-2.5 rounded-lg transition-colors">
+      <button className="flex items-center gap-2 text-sm font-medium bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-2.5 rounded-lg transition-colors">
         <Check className="w-4 h-4" />
         Confirmar e Ajustar Prescrição
       </button>

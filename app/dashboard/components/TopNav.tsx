@@ -23,8 +23,8 @@ export function TopNav() {
               key={tab}
               className={`h-full text-sm border-b-2 transition-colors px-0.5 ${
                 tab === "Dashboard"
-                  ? "border-[#163254] text-[#163254] font-semibold"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  ? "border-[#7C3AED] text-[#7C3AED] font-semibold"
+                  : "border-transparent text-gray-500 hover:text-[#7C3AED] hover:border-[#7C3AED]/30"
               }`}
             >
               {tab}
@@ -47,7 +47,7 @@ export function TopNav() {
         </button>
         <Link
           href="/perfil"
-          className="w-8 h-8 bg-[#163254] rounded-full flex items-center justify-center text-white text-xs font-semibold hover:bg-[#1e3d68] transition-colors"
+          className="w-8 h-8 bg-[#7C3AED] rounded-full flex items-center justify-center text-white text-xs font-semibold hover:bg-[#6D28D9] transition-colors"
           title="Meu Perfil"
         >
           CS

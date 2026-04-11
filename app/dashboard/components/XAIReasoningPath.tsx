@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState, useMemo, useCallback, ElementType } from "react";
+import { useState, useMemo, useEffect, useRef, ElementType } from "react";
 import {
   Code2,
   Search,
@@ -9,6 +9,12 @@ import {
   CheckCircle2,
   X,
   ExternalLink,
+  Database,
+  Pill,
+  Activity,
+  FileText,
+  Microscope,
+  ShieldAlert,
 } from "lucide-react";
 import type { PatientData } from "../types";
 import { ActionButtons } from "./ActionButtons";
@@ -41,22 +47,12 @@ interface NodeData {
   isRoot?: boolean;
   reference?: NodeReference;
   onRefClick?: () => void;
-  isRefOpen?: boolean;
-}
-
-interface RefNodeData {
-  title: string;
-  evidenceLevel: "Forte" | "Moderada" | "Baixa";
-  reasoning: string;
-  sources: Array<{ name: string; type: string; detail: string }>;
-  recommendation?: string;
-  onClose?: () => void;
 }
 
 const EVIDENCE_BADGE: Record<string, string> = {
-  Forte: "bg-green-100 text-green-700 border-green-200",
-  Moderada: "bg-yellow-100 text-yellow-700 border-yellow-200",
-  Baixa: "bg-gray-100 text-gray-600 border-gray-200",
+  Forte: "bg-[#7C3AED] text-white border-[#7C3AED]",
+  Moderada: "bg-[#7C3AED]/15 text-[#6D28D9] border-[#7C3AED]/30",
+  Baixa: "bg-[#7C3AED]/5 text-[#7C3AED]/60 border-[#7C3AED]/15",
 };
 
 const CustomNode = ({ data, selected }: NodeProps) => {
@@ -65,215 +61,94 @@ const CustomNode = ({ data, selected }: NodeProps) => {
   const isRoot = d.isRoot;
 
   return (
-    <div className="relative">
-      {/* Bolinha ? lateral — abre/fecha nó de referência */}
-      {d.reference && (
-        <>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              d.onRefClick?.();
-            }}
-            className={`absolute -left-12 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full text-white text-sm font-bold flex items-center justify-center shadow-md transition-all z-10 ${
-              d.isRefOpen
-                ? "bg-[#6D28D9] ring-2 ring-[#7C3AED]/30"
-                : "bg-[#7C3AED] hover:bg-[#6D28D9]"
-            }`}
-            title={d.isRefOpen ? "Fechar referência" : "Ver referência"}
-          >
-            ?
-          </button>
-          {/* linha entre ? e borda do card */}
-          <div className="absolute -left-4 top-1/2 -translate-y-1/2 w-4 h-px bg-[#7C3AED]/40" />
-        </>
+    <div
+      className={`bg-white border-2 rounded-xl p-4 w-[280px] shadow-sm relative transition-all duration-150 ${
+        isRoot
+          ? `border-[#7C3AED] ${selected ? "shadow-[#7C3AED]/20 shadow-md" : ""}`
+          : `border-[#7C3AED]/30 ${
+              selected
+                ? "border-[#7C3AED] shadow-[#7C3AED]/10 shadow-md"
+                : "hover:border-[#7C3AED]/60 hover:shadow-md"
+            }`
+      }`}
+    >
+      {/* Handle superior: fonte das arestas que sobem */}
+      {!isRoot && (
+        <Handle
+          type="source"
+          id="tree-top"
+          position={Position.Top}
+          className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
+        />
       )}
 
-      <div
-        className={`bg-white border-2 rounded-xl p-4 w-[280px] shadow-sm relative transition-all duration-150 ${
-          isRoot
-            ? `border-orange-400 ${selected ? "shadow-orange-200 shadow-md" : ""}`
-            : `border-[#7C3AED]/30 ${
-                d.isRefOpen
-                  ? "border-[#7C3AED]/70 shadow-[#7C3AED]/10 shadow-md"
-                  : selected
-                    ? "border-[#7C3AED] shadow-[#7C3AED]/10 shadow-md"
-                    : "hover:border-[#7C3AED]/60 hover:shadow-md"
-              }`
-        }`}
-      >
-        {/* Handle invisível para aresta do nó de referência (vem da esquerda) */}
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="ref-left"
-          className="!w-2 !h-2 !bg-[#7C3AED] !border-none opacity-0"
-        />
-
-        {!isRoot && (
-          <Handle
-            type="target"
-            id="tree-top"
-            position={Position.Top}
-            className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
-          />
+      <div className="flex items-start gap-2 mb-2">
+        {Icon && (
+          <div
+            className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+              isRoot ? "bg-[#7C3AED]/20" : "bg-[#7C3AED]/10"
+            }`}
+          >
+            <Icon
+              className={`w-4 h-4 ${isRoot ? "text-[#7C3AED]" : "text-[#7C3AED]"}`}
+            />
+          </div>
         )}
-
-        <div className="flex items-start gap-2 mb-2">
-          {Icon && (
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                isRoot ? "bg-orange-100" : "bg-[#7C3AED]/10"
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-1">
+            <h3
+              className={`text-sm font-semibold leading-tight ${
+                isRoot ? "text-[#4C1D95]" : "text-gray-900"
               }`}
             >
-              <Icon
-                className={`w-4 h-4 ${isRoot ? "text-orange-500" : "text-[#7C3AED]"}`}
-              />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <h3
-                className={`text-sm font-semibold leading-tight ${
-                  isRoot ? "text-orange-900" : "text-gray-900"
-                }`}
-              >
-                {d.title}
-              </h3>
+              {d.title}
+            </h3>
+            <div className="flex items-center gap-1 flex-shrink-0">
               {d.source && (
-                <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full flex-shrink-0 whitespace-nowrap">
+                <span className="text-[10px] text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full whitespace-nowrap">
                   {d.source}
                 </span>
+              )}
+              {d.reference && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    d.onRefClick?.();
+                  }}
+                  className="w-5 h-5 rounded-full bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-[10px] font-bold flex items-center justify-center shadow transition-colors flex-shrink-0"
+                  title="Ver referência"
+                >
+                  ?
+                </button>
               )}
             </div>
           </div>
         </div>
-
-        <p className="text-xs text-gray-600 leading-relaxed text-justify">
-          {d.content}
-        </p>
-
-        {d.link && (
-          <div className="mt-2 flex items-center gap-1 text-[11px] text-[#7C3AED] hover:underline cursor-pointer border-t border-gray-100 pt-2">
-            <span>↗</span>
-            <span className="truncate">{d.link}</span>
-          </div>
-        )}
-
-        <Handle
-          type="source"
-          id="tree-bottom"
-          position={Position.Bottom}
-          className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
-        />
       </div>
-    </div>
-  );
-};
 
-const ReferenceNode = ({ data }: NodeProps) => {
-  const d = data as unknown as RefNodeData;
-  return (
-    <div className="bg-white border-2 border-[#7C3AED]/30 rounded-xl shadow-md w-[300px] overflow-hidden">
+      <p className="text-xs text-gray-600 leading-relaxed text-justify">
+        {d.content}
+      </p>
+
+      {d.link && (
+        <div className="mt-2 flex items-center gap-1 text-[11px] text-[#7C3AED] hover:underline cursor-pointer border-t border-gray-100 pt-2">
+          <span>↗</span>
+          <span className="truncate">{d.link}</span>
+        </div>
+      )}
+
+      {/* Handle inferior: alvo das arestas que chegam de cima */}
       <Handle
-        type="source"
-        position={Position.Right}
+        type="target"
+        id="tree-bottom"
+        position={Position.Bottom}
         className="!w-2 !h-2 !bg-[#7C3AED] !border-none"
       />
-
-      {/* Header */}
-      <div className="flex items-start justify-between p-3 border-b border-gray-100">
-        <div className="flex-1 min-w-0 pr-2">
-          <div className="flex items-center gap-1.5 mb-1">
-            <div className="w-4 h-4 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-[9px] font-bold flex-shrink-0">
-              ?
-            </div>
-            <span className="text-[9px] text-gray-400 uppercase tracking-wider">
-              Referência & Raciocínio
-            </span>
-          </div>
-          <h4 className="text-[11px] font-bold text-gray-900 leading-tight">
-            {d.title}
-          </h4>
-        </div>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            d.onClose?.();
-          }}
-          className="p-0.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded transition-colors flex-shrink-0 mt-0.5"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      {/* Badge evidência */}
-      <div className="px-3 py-1.5 border-b border-gray-100">
-        <span
-          className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${EVIDENCE_BADGE[d.evidenceLevel]}`}
-        >
-          Evidência {d.evidenceLevel}
-        </span>
-      </div>
-
-      {/* Corpo */}
-      <div className="p-3 space-y-3 max-h-[320px] overflow-y-auto">
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1">
-            Por que esta sugestão?
-          </p>
-          <p className="text-[10px] text-gray-700 leading-relaxed text-justify">
-            {d.reasoning}
-          </p>
-        </div>
-
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-1.5">
-            Fontes consultadas
-          </p>
-          <div className="space-y-1.5">
-            {d.sources.map((src, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg border border-gray-100"
-              >
-                <ExternalLink className="w-2.5 h-2.5 text-[#7C3AED] flex-shrink-0 mt-0.5" />
-                <div>
-                  <div className="flex items-center gap-1 mb-0.5 flex-wrap">
-                    <span className="text-[10px] font-semibold text-gray-900">
-                      {src.name}
-                    </span>
-                    <span className="text-[8px] text-gray-400 bg-gray-100 px-1 py-0.5 rounded">
-                      {src.type}
-                    </span>
-                  </div>
-                  <p className="text-[9px] text-gray-500 leading-relaxed">
-                    {src.detail}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {d.recommendation && (
-          <div className="p-2 bg-[#7C3AED]/5 border border-[#7C3AED]/15 rounded-lg">
-            <p className="text-[9px] text-[#7C3AED]/70 uppercase tracking-wider mb-0.5">
-              Recomendação clínica
-            </p>
-            <p className="text-[10px] text-[#7C3AED] leading-relaxed font-medium text-justify">
-              {d.recommendation}
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
 
-const nodeTypes = {
-  custom: CustomNode,
-  reference: ReferenceNode,
-};
+const nodeTypes = { custom: CustomNode };
 
 const MED_CORRELATIONS: Array<{
   drugName: string;
@@ -333,6 +208,30 @@ const MED_CORRELATIONS: Array<{
   },
 ];
 
+// Layout bottom-up: camada 0 = base (fundo), camada N = decisão (topo)
+const LAYER_Y = [900, 700, 500, 300, 100];
+const NODE_W = 300;
+const NODE_GAP = 40;
+
+function xCenter(count: number, index: number): number {
+  const totalW = count * NODE_W + (count - 1) * NODE_GAP;
+  const startX = -totalW / 2 + NODE_W / 2;
+  return startX + index * (NODE_W + NODE_GAP);
+}
+
+function makeEdge(source: string, target: string): Edge {
+  return {
+    id: `edge-${source}-${target}`,
+    source,
+    sourceHandle: "tree-top",
+    target,
+    targetHandle: "tree-bottom",
+    type: "default",
+    style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.6 },
+    markerEnd: { type: MarkerType.ArrowClosed, color: "#7C3AED" },
+  };
+}
+
 function buildGraphData(patient: PatientData) {
   const meds = patient.medications.map((m) => m.name.trim()).filter(Boolean);
   const symptoms = patient.symptoms.map((s) => s.trim()).filter(Boolean);
@@ -357,27 +256,232 @@ function buildGraphData(patient: PatientData) {
     }
   }
 
-  const nodes: Node[] = [];
+  const allNodes: (Node & { layer: number })[] = [];
   const edges: Edge[] = [];
-
   const medList = meds.length > 0 ? meds.join(", ") : "nenhuma medicação";
   const symptomList =
     symptoms.length > 0 ? symptoms.join(", ") : "nenhum sintoma";
 
   if (matched) {
-    // Root Node: Conclusion
-    nodes.push({
-      id: "root",
+    // ── Camada 0: Dados Brutos ─────────────────────────────────────────────
+    allNodes.push({
+      id: "l0-meds",
       type: "custom",
-      position: { x: 420, y: 40 },
+      layer: 0,
+      position: { x: 0, y: 0 },
       data: {
-        isRoot: true,
-        icon: AlertTriangle,
-        title: matched.title,
-        content: matched.message(matchedDrug, matchedSymptom),
+        icon: Pill,
+        title: "Medicações do Paciente",
+        source: "Prontuário",
+        content: `Medicamentos ativos registrados: ${medList}. Dados coletados do prontuário eletrônico.`,
         reference: {
           evidenceLevel: "Forte",
-          reasoning: `O sistema identificou ${matchedDrug} na lista de medicações ativas e encontrou "${matchedSymptom}" nos sintomas relatados. A correlação farmacológica entre inibidores da ECA e tosse irritativa está documentada em múltiplas bases de dados clínicas e é considerada um evento adverso classe-efeito.`,
+          reasoning:
+            "Lista de medicamentos extraída do prontuário ativo do paciente.",
+          sources: [
+            {
+              name: "Prontuário Eletrônico",
+              type: "Registro Clínico",
+              detail: "Dados de prescrição vigente.",
+            },
+          ],
+        },
+      },
+    });
+
+    allNodes.push({
+      id: "l0-symptoms",
+      type: "custom",
+      layer: 0,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Activity,
+        title: "Sintomas Relatados",
+        source: "Prontuário",
+        content: `Sintomas registrados na última consulta: ${symptomList}. Coletados via anamnese estruturada.`,
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning:
+            "Sintomas reportados pelo paciente e registrados pelo médico assistente.",
+          sources: [
+            {
+              name: "Anamnese Clínica",
+              type: "Registro Clínico",
+              detail: "Coleta estruturada em consulta.",
+            },
+          ],
+        },
+      },
+    });
+
+    allNodes.push({
+      id: "l0-vitals",
+      type: "custom",
+      layer: 0,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Database,
+        title: "Dados Clínicos Basais",
+        source: "Monitoramento",
+        content: `PA: ${patient.bp} mmHg · Pulso: ${patient.pulse} bpm. Parâmetros coletados pelo sistema de monitoramento contínuo.`,
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning:
+            "Sinais vitais aferidos automaticamente e registrados no sistema.",
+          sources: [
+            {
+              name: "Monitor Clínico",
+              type: "Equipamento Médico",
+              detail: "Leitura automática de sinais vitais.",
+            },
+          ],
+        },
+      },
+    });
+
+    // ── Camada 1: Consulta em Bases Externas ──────────────────────────────
+    allNodes.push({
+      id: "l1-fda",
+      type: "custom",
+      layer: 1,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Database,
+        title: "Consulta OpenFDA FAERS",
+        source: "OpenFDA",
+        content: matched.fdaStat,
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning: `Dados de farmacovigilância consultados no FDA FAERS para ${matchedDrug}. Incidência documentada em múltiplas populações.`,
+          sources: [
+            {
+              name: "FDA FAERS",
+              type: "Banco de Farmacovigilância",
+              detail: "OpenFDA FAERS API – adverse event reports (2020-2025).",
+            },
+            {
+              name: "BMJ",
+              type: "Meta-análise",
+              detail:
+                "Woo & Nicholls (2000) – Incidence and risk factors for ACE inhibitor cough.",
+            },
+          ],
+          recommendation:
+            "Incidência expressiva justifica investigação imediata.",
+        },
+      },
+    });
+
+    allNodes.push({
+      id: "l1-nih",
+      type: "custom",
+      layer: 1,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Microscope,
+        title: "Fisiopatologia / NIH",
+        source: "NIH",
+        content: matched.mechanism,
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning: `Mecanismo farmacológico documentado em literatura peer-reviewed. iECA bloqueiam degradação da bradicinina, desencadeando tosse reflexa.`,
+          sources: [
+            {
+              name: "NEJM",
+              type: "Artigo Científico",
+              detail:
+                "Israili & Hall (1992) – Cough and angioneurotic edema associated with ACE inhibitor therapy.",
+            },
+            {
+              name: "PubMed",
+              type: "Revisão Sistemática",
+              detail:
+                "PMID: 1567463 – Bradykinin-mediated cough in hypertensive patients.",
+            },
+          ],
+          recommendation: "Dados fisiopatológicos confirmam relação causal.",
+        },
+      },
+    });
+
+    // ── Camada 2: Correlação Iatrogênica ──────────────────────────────────
+    allNodes.push({
+      id: "l2-correlation",
+      type: "custom",
+      layer: 2,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Code2,
+        title: "Correlação Medicamento–Sintoma",
+        source: "Motor XAI",
+        content: `Cruzamento confirmado: ${matchedDrug} × "${matchedSymptom}". Padrão iatrogênico identificado com alta confiança pelo motor de raciocínio.`,
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning: `O algoritmo cruzou a lista de medicamentos com os sintomas usando a base interna, validada por diretrizes clínicas e bancos de farmacovigilância.`,
+          sources: [
+            {
+              name: "Motor XAI Interno",
+              type: "Algoritmo Clínico",
+              detail:
+                "Correlação baseada em padrões pré-validados por especialistas.",
+            },
+            {
+              name: "ANVISA",
+              type: "Bula Oficial",
+              detail: `${matchedDrug} – efeito adverso documentado.`,
+            },
+          ],
+        },
+      },
+    });
+
+    allNodes.push({
+      id: "l2-differential",
+      type: "custom",
+      layer: 2,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Share2,
+        title: "Diagnóstico Diferencial",
+        source: "OMS",
+        content: matched.differentialNote,
+        link: `URI CID-11: ${matched.icdCode}`,
+        reference: {
+          evidenceLevel: "Moderada",
+          reasoning: `Protocolo recomenda excluir: (1) infecção respiratória ativa, (2) asma/hiperreatividade brônquica, (3) refluxo gastroesofágico. Diagnóstico de exclusão necessário.`,
+          sources: [
+            {
+              name: "OMS CID-11",
+              type: "Classificação Internacional",
+              detail: `${matched.icdCode}`,
+            },
+            {
+              name: "GINA Guidelines",
+              type: "Diretriz Clínica",
+              detail:
+                "Global Initiative for Asthma – Differential diagnosis of chronic cough (2024).",
+            },
+          ],
+          recommendation:
+            "Ausculta pulmonar e, se necessário, espirometria antes de classificar como iatrogenesia.",
+        },
+      },
+    });
+
+    // ── Camada 3: Avaliação de Risco ──────────────────────────────────────
+    allNodes.push({
+      id: "l3-risk",
+      type: "custom",
+      layer: 3,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: ShieldAlert,
+        title: "Avaliação de Risco Clínico",
+        source: "Protocolo",
+        content: `Risco classificado como ALTO. Continuidade de uso de ${matchedDrug} sem revisão pode agravar o quadro respiratório e comprometer adesão ao tratamento anti-hipertensivo.`,
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning: `Classificação de risco alto baseada em: (1) incidência documentada ≥15%, (2) mecanismo causal confirmado, (3) sintoma ativo no momento da avaliação.`,
           sources: [
             {
               name: "UpToDate",
@@ -388,125 +492,156 @@ function buildGraphData(patient: PatientData) {
             {
               name: "NIH MedlinePlus",
               type: "Base de Dados",
-              detail: "Lisinopril: efeitos colaterais e contraindicações.",
+              detail: `${matchedDrug}: efeitos colaterais e contraindicações.`,
+            },
+          ],
+          recommendation: `Substituição de ${matchedDrug} por ARA-II (ex: Losartana) é a conduta preferida.`,
+        },
+      },
+    });
+
+    // ── Camada 4 (topo): Decisão Final ────────────────────────────────────
+    allNodes.push({
+      id: "root",
+      type: "custom",
+      layer: 4,
+      position: { x: 0, y: 0 },
+      data: {
+        isRoot: true,
+        icon: AlertTriangle,
+        title: matched.title,
+        content: matched.message(matchedDrug, matchedSymptom),
+        reference: {
+          evidenceLevel: "Forte",
+          reasoning: `O sistema identificou ${matchedDrug} na lista de medicações e encontrou "${matchedSymptom}" nos sintomas. Correlação farmacológica documentada em múltiplas bases clínicas.`,
+          sources: [
+            {
+              name: "UpToDate",
+              type: "Revisão Clínica",
+              detail:
+                "ACE inhibitor-induced cough – Class effect with all agents.",
+            },
+            {
+              name: "NIH MedlinePlus",
+              type: "Base de Dados",
+              detail: `${matchedDrug}: efeitos colaterais e contraindicações.`,
             },
             {
               name: "ANVISA",
               type: "Bula Oficial",
-              detail:
-                "Lisinopril – Classe: Inibidor da ECA. Efeito adverso frequente: tosse seca (≥1/10).",
+              detail: `${matchedDrug} – Classe: Inibidor da ECA. Efeito adverso frequente: tosse seca (≥1/10).`,
             },
           ],
-          recommendation: `Considerar substituição de ${matchedDrug} por antagonista do receptor de angiotensina II (ARA-II), como Losartana, que não causa acúmulo de bradicinina.`,
+          recommendation: `Considerar substituição de ${matchedDrug} por ARA-II, como Losartana, que não causa acúmulo de bradicinina.`,
         },
       },
     });
 
-    // Child 1: Pathophysiology
-    nodes.push({
-      id: "child-1",
+    // ── Arestas (de baixo para cima) ─────────────────────────────────────
+    edges.push(makeEdge("l0-meds", "l1-fda"));
+    edges.push(makeEdge("l0-symptoms", "l1-fda"));
+    edges.push(makeEdge("l0-symptoms", "l1-nih"));
+    edges.push(makeEdge("l0-meds", "l1-nih"));
+    edges.push(makeEdge("l0-vitals", "l1-nih"));
+    edges.push(makeEdge("l1-fda", "l2-correlation"));
+    edges.push(makeEdge("l1-nih", "l2-correlation"));
+    edges.push(makeEdge("l1-nih", "l2-differential"));
+    edges.push(makeEdge("l1-fda", "l2-differential"));
+    edges.push(makeEdge("l2-correlation", "l3-risk"));
+    edges.push(makeEdge("l2-differential", "l3-risk"));
+    edges.push(makeEdge("l3-risk", "root"));
+  } else {
+    // ── Caso sem alerta: fluxo simplificado (3 camadas) ─────────────────
+    allNodes.push({
+      id: "l0-meds",
       type: "custom",
-      position: { x: 60, y: 340 },
+      layer: 0,
+      position: { x: 0, y: 0 },
       data: {
-        icon: Code2,
-        title: "Fisiopatologia / Mecanismo",
-        source: "NIH",
-        content: matched.mechanism,
-        reference: {
-          evidenceLevel: "Forte",
-          reasoning: `Os inibidores da ECA (iECA) bloqueiam a enzima conversora de angiotensina, impedindo a degradação da bradicinina. O acúmulo de bradicinina na mucosa traqueobrônquica estimula receptores B2, causando tosse reflexa não produtiva. Esse mecanismo é independente da dose e afeta todos os iECA.`,
-          sources: [
-            {
-              name: "NEJM",
-              type: "Artigo Científico",
-              detail:
-                "Israili & Hall (1992) – Cough and angioneurotic edema associated with ACE inhibitor therapy. Ann Int Med.",
-            },
-            {
-              name: "PubMed (NCBI)",
-              type: "Revisão Sistemática",
-              detail:
-                "PMID: 1567463 – Bradykinin-mediated cough in hypertensive patients.",
-            },
-          ],
-          recommendation:
-            "Dados fisiopatológicos confirmam relação causal. Avaliação clínica recomendada para decisão terapêutica.",
-        },
-      },
-    });
-
-    // Child 2: Clinical Evidence
-    nodes.push({
-      id: "child-2",
-      type: "custom",
-      position: { x: 420, y: 340 },
-      data: {
-        icon: Search,
-        title: "Evidência Clínica",
-        source: "OpenFDA",
-        content: matched.fdaStat,
-        reference: {
-          evidenceLevel: "Forte",
-          reasoning: `Dados de farmacovigilância da FDA (FAERS – FDA Adverse Event Reporting System) mostram consistência na relação causal. A incidência de tosse induzida por iECA varia de 5% a 35% dependendo da etnia e genética do paciente, com maior prevalência em populações asiáticas.`,
-          sources: [
-            {
-              name: "FDA FAERS",
-              type: "Banco de Dados de Farmacovigilância",
-              detail:
-                "OpenFDA FAERS API – adverse event reports: lisinopril + cough (2020-2025).",
-            },
-            {
-              name: "British Medical Journal",
-              type: "Meta-análise",
-              detail:
-                "Woo & Nicholls (2000) – Incidence and risk factors for ACE inhibitor cough in hypertensive patients.",
-            },
-          ],
-          recommendation:
-            "Incidência expressiva justifica investigação imediata e provável substituição do fármaco.",
-        },
-      },
-    });
-
-    // Child 3: Differential Diagnosis
-    nodes.push({
-      id: "child-3",
-      type: "custom",
-      position: { x: 780, y: 340 },
-      data: {
-        icon: Share2,
-        title: "Diagnóstico Diferencial",
-        source: "OMS",
-        content: matched.differentialNote,
-        link: `URI CID-11: ${matched.icdCode}`,
+        icon: Pill,
+        title: "Medicações do Paciente",
+        source: "Prontuário",
+        content:
+          meds.length > 0
+            ? `Medicamentos verificados: ${medList}.`
+            : "Sem medicações registradas.",
         reference: {
           evidenceLevel: "Moderada",
-          reasoning: `Antes de atribuir a tosse exclusivamente ao iECA, o protocolo clínico recomenda excluir: (1) infecção respiratória ativa (CID-11 BA00.Z), (2) asma ou hiperreatividade brônquica, (3) refluxo gastroesofágico com aspiração laríngea. O diagnóstico de exclusão é necessário para não suspender a medicação desnecessariamente.`,
+          reasoning:
+            "Lista de medicamentos consultada. Nenhum evento adverso sério identificado.",
+          sources: [
+            {
+              name: "OpenFDA FAERS",
+              type: "Banco de Dados",
+              detail:
+                "FDA Adverse Event Reporting System – consulta automatizada.",
+            },
+          ],
+        },
+      },
+    });
+
+    allNodes.push({
+      id: "l0-symptoms",
+      type: "custom",
+      layer: 0,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Activity,
+        title: "Sintomas Relatados",
+        source: "Prontuário",
+        content:
+          symptoms.length > 0
+            ? `Sintomas listados: ${symptomList}.`
+            : "Nenhum sintoma registrado.",
+        reference: {
+          evidenceLevel: "Baixa",
+          reasoning:
+            "Sintomas mapeados isoladamente. Sem padrão iatrogênico identificado.",
           sources: [
             {
               name: "OMS CID-11",
               type: "Classificação Internacional",
               detail:
-                "BA00.Z – Infecção aguda das vias respiratórias superiores, não especificada.",
-            },
-            {
-              name: "GINA Guidelines",
-              type: "Diretriz Clínica",
-              detail:
-                "Global Initiative for Asthma – Differential diagnosis of chronic cough (2024).",
+                "Mapeamento automático de sintomas para códigos diagnósticos.",
             },
           ],
-          recommendation:
-            "Solicitar anamnese detalhada, ausculta pulmonar e, se necessário, espirometria antes de classificar como iatrogenesia.",
+          recommendation: "Consulta médica presencial recomendada.",
         },
       },
     });
-  } else {
-    // Root Node: Safe
-    nodes.push({
+
+    allNodes.push({
+      id: "l1-analysis",
+      type: "custom",
+      layer: 1,
+      position: { x: 0, y: 0 },
+      data: {
+        icon: Search,
+        title: "Análise de Correlação",
+        source: "Motor XAI",
+        content: `Cruzamento de ${medList} com ${symptomList}. Nenhum padrão iatrogênico atingiu o limiar de correlação.`,
+        reference: {
+          evidenceLevel: "Moderada",
+          reasoning:
+            "Análise cruzada não encontrou correspondência nas bases de farmacovigilância.",
+          sources: [
+            {
+              name: "OpenFDA FAERS",
+              type: "Banco de Dados",
+              detail:
+                "Análise de eventos adversos para os fármacos registrados.",
+            },
+          ],
+        },
+      },
+    });
+
+    allNodes.push({
       id: "root",
       type: "custom",
-      position: { x: 240, y: 40 },
+      layer: 2,
+      position: { x: 0, y: 0 },
       data: {
         isRoot: true,
         icon: CheckCircle2,
@@ -514,7 +649,7 @@ function buildGraphData(patient: PatientData) {
         content: `Nenhuma correlação iatrogênica direta identificada entre ${medList} e ${symptomList}.`,
         reference: {
           evidenceLevel: "Moderada",
-          reasoning: `A análise cruzou medicações (${medList}) com sintomas (${symptomList}) usando as bases NIH, OpenFDA FAERS e CID-11. Nenhuma das combinações ativas atingiu o limiar de correlação causal definido no protocolo de farmacovigilância automatizada.`,
+          reasoning: `A análise cruzou medicações com sintomas usando as bases NIH, OpenFDA FAERS e CID-11. Nenhuma combinação atingiu o limiar de correlação causal.`,
           sources: [
             {
               name: "OpenFDA FAERS",
@@ -534,195 +669,271 @@ function buildGraphData(patient: PatientData) {
       },
     });
 
-    nodes.push({
-      id: "child-1",
-      type: "custom",
-      position: { x: 60, y: 340 },
-      data: {
-        icon: Search,
-        title: "Perfil de Segurança",
-        source: "OpenFDA",
-        content:
-          meds.length > 0
-            ? `Medicamentos verificados: ${meds.slice(0, 2).join(" e ")}. Nenhuma interação crítica detectada.`
-            : "Sem medicações para consulta.",
-        reference: {
-          evidenceLevel: "Moderada",
-          reasoning: `O perfil de farmacovigilância dos medicamentos registrados foi consultado no OpenFDA FAERS. Nenhum evento adverso sério foi identificado para as combinações atuais.`,
-          sources: [
-            {
-              name: "OpenFDA FAERS",
-              type: "Banco de Dados",
-              detail:
-                "FDA Adverse Event Reporting System – consulta automatizada.",
-            },
-          ],
-        },
-      },
-    });
-
-    nodes.push({
-      id: "child-2",
-      type: "custom",
-      position: { x: 420, y: 340 },
-      data: {
-        icon: Share2,
-        title: "Análise Diferencial",
-        source: "OMS",
-        content:
-          symptoms.length > 0
-            ? `Mapeamento diferencial para ${symptomList} via CID-11. Monitoramento recomendado.`
-            : "Aguardando sintomas para análise.",
-        reference: {
-          evidenceLevel: "Baixa",
-          reasoning: `Sem correlação medicamentosa identificada, os sintomas foram mapeados isoladamente na CID-11 para fins de diagnóstico diferencial. A análise tem confiança reduzida por ausência de padrão iatrogênico confirmado.`,
-          sources: [
-            {
-              name: "OMS CID-11",
-              type: "Classificação Internacional",
-              detail:
-                "Mapeamento automático de sintomas para códigos diagnósticos.",
-            },
-          ],
-          recommendation:
-            "Consulta médica presencial recomendada para avaliação clínica completa.",
-        },
-      },
-    });
+    edges.push(makeEdge("l0-meds", "l1-analysis"));
+    edges.push(makeEdge("l0-symptoms", "l1-analysis"));
+    edges.push(makeEdge("l1-analysis", "root"));
   }
 
-  const childIds = matched
-    ? ["child-1", "child-2", "child-3"]
-    : ["child-1", "child-2"];
-
-  childIds.forEach((childId) => {
-    edges.push({
-      id: `edge-root-${childId}`,
-      source: "root",
-      sourceHandle: "tree-bottom",
-      target: childId,
-      targetHandle: "tree-top",
-      type: "default",
-      style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.6 },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: "#7C3AED",
-      },
-    });
+  // Calcular posições baseadas na camada
+  const layerGroups: Record<number, typeof allNodes> = {};
+  for (const n of allNodes) {
+    if (!layerGroups[n.layer]) layerGroups[n.layer] = [];
+    layerGroups[n.layer].push(n);
+  }
+  const nodes: Node[] = allNodes.map((n) => {
+    const group = layerGroups[n.layer];
+    const idx = group.indexOf(n);
+    const count = group.length;
+    const layerY = LAYER_Y[n.layer] ?? n.layer * 200 + 100;
+    return { ...n, position: { x: xCenter(count, idx), y: layerY } };
   });
 
-  return { nodes, edges };
+  // Ordem de revelação: camada 0 primeiro → root por último
+  const revealOrder = allNodes
+    .slice()
+    .sort((a, b) => a.layer - b.layer)
+    .map((n) => n.id);
+
+  return { nodes, edges, revealOrder };
 }
 
 interface Props {
   patient: PatientData;
+  /** Quando true, inicia a animação de revelação gradual ao montar */
+  autoPlay?: boolean;
 }
 
-export function XAIReasoningPath({ patient }: Props) {
-  const [openRefs, setOpenRefs] = useState<Set<string>>(new Set());
+export function XAIReasoningPath({ patient, autoPlay = false }: Props) {
+  const [selectedRef, setSelectedRef] = useState<{
+    title: string;
+    ref: NodeReference;
+  } | null>(null);
+
+  const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
+  const [animating, setAnimating] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   const baseGraph = useMemo(() => buildGraphData(patient), [patient]);
 
-  const toggleRef = useCallback((nodeId: string) => {
-    setOpenRefs((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeId)) {
-        next.delete(nodeId);
-      } else {
-        next.add(nodeId);
-      }
-      return next;
+  // Inicia animação ao montar se autoPlay=true
+  // O componente é remontado via key no DashboardClient, então o estado já começa zerado
+  useEffect(() => {
+    if (!autoPlay) return;
+
+    setAnimating(true);
+
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const { revealOrder } = baseGraph;
+    revealOrder.forEach((id, i) => {
+      const t = setTimeout(
+        () => {
+          setVisibleIds((prev) => new Set([...prev, id]));
+          if (i === revealOrder.length - 1) setAnimating(false);
+        },
+        (i + 1) * 1000,
+      );
+      timers.push(t);
     });
+    timerRef.current = timers;
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const { nodes, edges } = useMemo(() => {
-    const mainNodes = baseGraph.nodes.map((n) => ({
+  const { nodes: allNodes, edges: allEdges } = useMemo(() => {
+    const rawEdges: Edge[] = baseGraph.edges;
+
+    const nodes = baseGraph.nodes.map((n) => ({
       ...n,
       data: {
         ...n.data,
-        onRefClick: n.data.reference ? () => toggleRef(n.id) : undefined,
-        isRefOpen: openRefs.has(n.id),
+        onRefClick: n.data.reference
+          ? () =>
+              setSelectedRef({
+                title: n.data.title as string,
+                ref: n.data.reference as NodeReference,
+              })
+          : undefined,
       },
+      hidden: !visibleIds.has(n.id),
     }));
 
-    const refNodes: Node[] = [];
-    const refEdges: Edge[] = [];
+    const edges: Edge[] = rawEdges.map((e) => ({
+      ...e,
+      hidden: !visibleIds.has(e.source) || !visibleIds.has(e.target),
+    }));
 
-    for (const n of baseGraph.nodes) {
-      if (openRefs.has(n.id) && n.data.reference) {
-        refNodes.push({
-          id: `ref-${n.id}`,
-          type: "reference",
-          position: {
-            x: n.position.x - 360,
-            y: n.position.y,
-          },
-          data: {
-            ...(n.data.reference as NodeReference),
-            title: n.data.title as string,
-            onClose: () => toggleRef(n.id),
-          },
-        });
-        refEdges.push({
-          id: `edge-ref-${n.id}`,
-          source: `ref-${n.id}`,
-          target: n.id,
-          targetHandle: "ref-left",
-          type: "straight",
-          style: { stroke: "#7C3AED", strokeWidth: 1.5, opacity: 0.5 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: "#7C3AED",
-          },
-        });
-      }
-    }
+    return { nodes, edges };
+  }, [baseGraph, visibleIds]);
 
-    return {
-      nodes: [...mainNodes, ...refNodes],
-      edges: [...baseGraph.edges, ...refEdges],
-    };
-  }, [baseGraph, openRefs, toggleRef]);
+  const isEmpty = visibleIds.size === 0 && !animating;
 
   return (
     <div className="w-full flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Cabeçalho */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm flex-shrink-0">
-        <h2 className="text-base font-semibold text-gray-900">
-          XAI: Árvore de Raciocínio Diagnóstico
-        </h2>
-        <div className="text-xs text-gray-500 hidden md:block">
-          Clique no{" "}
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            XAI: Árvore de Raciocínio Diagnóstico
+          </h2>
+          {animating && (
+            <span className="flex items-center gap-1.5 text-xs text-[#7C3AED] animate-pulse">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] inline-block" />
+              Construindo raciocínio...
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-gray-500 hidden md:flex items-center gap-1">
+          Clique no
           <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#7C3AED] text-white text-[10px] font-bold mx-0.5">
             ?
-          </span>{" "}
-          para expandir a referência como nó
+          </span>
+          do card para ver a referência
         </div>
       </div>
 
       {/* Diagrama ReactFlow */}
-      <div className="w-full h-[640px] bg-slate-50/50">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.6, includeHiddenNodes: true }}
-          minZoom={0.15}
-          maxZoom={1.5}
-          proOptions={{ hideAttribution: true }}
-          preventScrolling={false}
-          nodesDraggable={false}
-        >
-          <Background color="#e5e7eb" gap={16} />
-          <Controls className="!bg-white !shadow-md !border-gray-200" />
-        </ReactFlow>
+      <div className="w-full h-[640px] bg-slate-50/50 relative">
+        {isEmpty ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-400">
+            <FileText className="w-10 h-10 opacity-30" />
+            <p className="text-sm text-center px-4">
+              Clique em{" "}
+              <span className="font-semibold text-[#7C3AED]">
+                Ver Árvore de Decisão
+              </span>{" "}
+              no painel do paciente para iniciar a análise.
+            </p>
+          </div>
+        ) : (
+          <ReactFlow
+            nodes={allNodes}
+            edges={allEdges}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.5, includeHiddenNodes: false }}
+            minZoom={0.1}
+            maxZoom={1.5}
+            proOptions={{ hideAttribution: true }}
+            preventScrolling={false}
+            nodesDraggable={false}
+          >
+            <Background color="#e5e7eb" gap={16} />
+            <Controls className="!bg-white !shadow-md !border-gray-200" />
+          </ReactFlow>
+        )}
       </div>
 
-      {/* Action Buttons dentro do card */}
-      <div>
-        <ActionButtons />
-      </div>
+      {/* Action Buttons */}
+      {!isEmpty && (
+        <div>
+          <ActionButtons />
+        </div>
+      )}
+
+      {/* Modal de referência */}
+      {selectedRef && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setSelectedRef(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between p-5 border-b border-gray-100">
+              <div className="flex-1 min-w-0 pr-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-6 h-6 rounded-full bg-[#7C3AED] text-white flex items-center justify-center text-xs font-bold flex-shrink-0">
+                    ?
+                  </div>
+                  <span className="text-[10px] text-gray-400 uppercase tracking-wider">
+                    Referência & Raciocínio
+                  </span>
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 leading-tight">
+                  {selectedRef.title}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span
+                  className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border ${EVIDENCE_BADGE[selectedRef.ref.evidenceLevel]}`}
+                >
+                  Evidência {selectedRef.ref.evidenceLevel}
+                </span>
+                <button
+                  onClick={() => setSelectedRef(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1.5">
+                  Por que esta sugestão?
+                </p>
+                <p className="text-xs text-gray-700 leading-relaxed text-justify">
+                  {selectedRef.ref.reasoning}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-2">
+                  Fontes consultadas
+                </p>
+                <div className="space-y-2">
+                  {selectedRef.ref.sources.map((src, i) => (
+                    <div
+                      key={i}
+                      className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-[#7C3AED] flex-shrink-0 mt-0.5" />
+                      <div>
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="text-xs font-semibold text-gray-900">
+                            {src.name}
+                          </span>
+                          <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+                            {src.type}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-gray-500 leading-relaxed">
+                          {src.detail}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {selectedRef.ref.recommendation && (
+                <div className="p-3 bg-[#7C3AED]/5 border border-[#7C3AED]/15 rounded-lg">
+                  <p className="text-[10px] text-[#7C3AED]/70 uppercase tracking-wider mb-1">
+                    Recomendação clínica
+                  </p>
+                  <p className="text-xs text-[#7C3AED] leading-relaxed font-medium text-justify">
+                    {selectedRef.ref.recommendation}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="px-5 py-3 border-t border-gray-100 bg-gray-50">
+              <button
+                onClick={() => setSelectedRef(null)}
+                className="w-full text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

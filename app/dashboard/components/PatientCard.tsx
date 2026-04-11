@@ -1,22 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Check, X, Plus, Trash2 } from "lucide-react";
+import { Pencil, Check, X, Plus, Trash2, GitBranch } from "lucide-react";
 import type { PatientData, Medication } from "../types";
 
 const STATUS_STYLES: Record<string, string> = {
   Estável: "bg-green-100 text-green-700",
   Crítico: "bg-red-100 text-red-700",
   Moderado: "bg-yellow-100 text-yellow-700",
-  "Em Observação": "bg-blue-100 text-blue-700",
+  "Em Observação": "bg-[#7C3AED]/10 text-[#6D28D9]",
 };
 
 interface Props {
   initialData: PatientData;
   onSave: (data: PatientData) => void;
+  onDecision?: () => void;
 }
 
-export function PatientCard({ initialData, onSave }: Props) {
+export function PatientCard({ initialData, onSave, onDecision }: Props) {
   const [draft, setDraft] = useState<PatientData>(initialData);
   const [editing, setEditing] = useState(false);
   const [newSymptom, setNewSymptom] = useState("");
@@ -86,7 +87,7 @@ export function PatientCard({ initialData, onSave }: Props) {
       <div className="flex items-center justify-between mb-4">
         {editing ? (
           <input
-            className="text-lg font-bold text-gray-900 border-b-2 border-[#163254] outline-none bg-transparent w-40"
+            className="text-lg font-bold text-gray-900 border-b-2 border-[#7C3AED] outline-none bg-transparent w-40"
             value={draft.id}
             onChange={(e) => setDraft((d) => ({ ...d, id: e.target.value }))}
           />
@@ -128,7 +129,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           ) : (
             <button
               onClick={startEdit}
-              className="p-1 text-gray-300 hover:text-[#163254] transition-colors"
+              className="p-1 text-gray-300 hover:text-[#7C3AED] transition-colors"
               title="Editar"
             >
               <Pencil className="w-3.5 h-3.5" />
@@ -145,7 +146,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           </p>
           {editing ? (
             <input
-              className="text-sm font-semibold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent w-full focus:border-[#163254] transition-colors"
+              className="text-sm font-semibold text-gray-900 border-b-2 border-[#7C3AED]/40 outline-none bg-transparent w-full focus:border-[#7C3AED] transition-colors"
               value={draft.age}
               onChange={(e) => setDraft((d) => ({ ...d, age: e.target.value }))}
             />
@@ -161,7 +162,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           </p>
           {editing ? (
             <select
-              className="text-sm font-semibold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent w-full focus:border-[#163254] transition-colors"
+              className="text-sm font-semibold text-gray-900 border-b-2 border-[#7C3AED]/40 outline-none bg-transparent w-full focus:border-[#7C3AED] transition-colors"
               value={draft.gender}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, gender: e.target.value }))
@@ -190,7 +191,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           {d.symptoms.map((s, i) => (
             <span
               key={i}
-              className="flex items-center gap-1 text-xs font-medium text-[#163254] bg-blue-50 border border-[#163254]/25 px-2.5 py-1 rounded-full"
+              className="flex items-center gap-1 text-xs font-medium text-[#7C3AED] bg-[#7C3AED]/5 border border-[#7C3AED]/25 px-2.5 py-1 rounded-full"
             >
               {s}
               {editing && (
@@ -215,7 +216,7 @@ export function PatientCard({ initialData, onSave }: Props) {
             />
             <button
               onClick={addSymptom}
-              className="text-[#163254]/40 hover:text-[#163254] transition-colors flex-shrink-0"
+              className="text-[#7C3AED]/40 hover:text-[#7C3AED] transition-colors flex-shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -234,14 +235,14 @@ export function PatientCard({ initialData, onSave }: Props) {
               key={i}
               className={`flex items-start gap-2.5 p-2.5 bg-gray-50 rounded-lg border ${editing ? "border-gray-200" : "border-gray-100"}`}
             >
-              <div className="w-7 h-7 bg-[#163254]/10 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">
+              <div className="w-7 h-7 bg-[#7C3AED]/10 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">
                 💊
               </div>
               <div className="flex-1 min-w-0">
                 {editing ? (
                   <>
                     <input
-                      className="text-xs font-semibold text-gray-900 border-b border-[#163254]/30 outline-none bg-transparent w-full mb-1 focus:border-[#163254] transition-colors pb-0.5"
+                      className="text-xs font-semibold text-gray-900 border-b border-[#7C3AED]/30 outline-none bg-transparent w-full mb-1 focus:border-[#7C3AED] transition-colors pb-0.5"
                       value={med.name}
                       onChange={(e) => updateMed(i, "name", e.target.value)}
                       placeholder="Nome do medicamento"
@@ -293,7 +294,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           {editing && (
             <button
               onClick={addMed}
-              className="w-full flex items-center justify-center gap-1.5 text-xs text-[#163254]/50 hover:text-[#163254] border border-dashed border-[#163254]/25 hover:border-[#163254]/50 rounded-lg py-2 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 text-xs text-[#7C3AED]/50 hover:text-[#7C3AED] border border-dashed border-[#7C3AED]/25 hover:border-[#7C3AED]/50 rounded-lg py-2 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Adicionar medicação
@@ -311,7 +312,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 text-center">
             {editing ? (
               <input
-                className="text-xl font-bold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent text-center w-full focus:border-[#163254] transition-colors"
+                className="text-xl font-bold text-gray-900 border-b-2 border-[#7C3AED]/40 outline-none bg-transparent text-center w-full focus:border-[#7C3AED] transition-colors"
                 value={draft.bp}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, bp: e.target.value }))
@@ -329,7 +330,7 @@ export function PatientCard({ initialData, onSave }: Props) {
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-100 text-center">
             {editing ? (
               <input
-                className="text-xl font-bold text-gray-900 border-b-2 border-[#163254]/40 outline-none bg-transparent text-center w-full focus:border-[#163254] transition-colors"
+                className="text-xl font-bold text-gray-900 border-b-2 border-[#7C3AED]/40 outline-none bg-transparent text-center w-full focus:border-[#7C3AED] transition-colors"
                 value={draft.pulse}
                 onChange={(e) =>
                   setDraft((d) => ({ ...d, pulse: e.target.value }))
@@ -357,10 +358,23 @@ export function PatientCard({ initialData, onSave }: Props) {
           </button>
           <button
             onClick={save}
-            className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-[#163254] hover:bg-[#1e3d68] text-white py-2.5 rounded-lg transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 text-sm font-semibold bg-[#7C3AED] hover:bg-[#6D28D9] text-white py-2.5 rounded-lg transition-colors"
           >
             <Check className="w-4 h-4" />
             Salvar
+          </button>
+        </div>
+      )}
+
+      {/* Botão de Decisão */}
+      {!editing && onDecision && (
+        <div className="mt-5 pt-4 border-t border-gray-100">
+          <button
+            onClick={onDecision}
+            className="w-full flex items-center justify-center gap-2 text-sm font-semibold bg-[#7C3AED] hover:bg-[#6D28D9] text-white py-2.5 rounded-lg transition-colors shadow-sm shadow-[#7C3AED]/30"
+          >
+            <GitBranch className="w-4 h-4" />
+            Ver Árvore de Decisão
           </button>
         </div>
       )}
