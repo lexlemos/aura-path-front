@@ -14,18 +14,17 @@ export function TopNav() {
           alt="Aura Path"
           width={1671}
           height={940}
-          className="h-8 w-auto object-contain"
+          className="h-16 w-auto object-contain"
           priority
         />
         <nav className="flex items-center gap-6 h-14">
           {navTabs.map((tab) => (
             <button
               key={tab}
-              className={`h-full text-sm border-b-2 transition-colors px-0.5 ${
-                tab === "Dashboard"
-                  ? "border-[#7C3AED] text-[#7C3AED] font-semibold"
-                  : "border-transparent text-gray-500 hover:text-[#7C3AED] hover:border-[#7C3AED]/30"
-              }`}
+              className={`h-full text-sm border-b-2 transition-colors px-0.5 ${tab === "Dashboard"
+                ? "border-[#7C3AED] text-[#7C3AED] font-semibold"
+                : "border-transparent text-gray-500 hover:text-[#7C3AED] hover:border-[#7C3AED]/30"
+                }`}
             >
               {tab}
             </button>

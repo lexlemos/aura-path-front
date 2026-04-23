@@ -7,28 +7,28 @@ const DRUG_ALERTS: Array<{
   title: string;
   message: (drug: string, symptom: string) => string;
 }> = [
-  {
-    drugName: "Lisinopril",
-    symptomKeywords: ["tosse", "tosse seca"],
-    title: "Potencial Evento Iatrogênico Detectado",
-    message: (drug, symptom) =>
-      `O ${drug} pode estar causando a ${symptom} relatada. Revisão clínica recomendada.`,
-  },
-  {
-    drugName: "Ibuprofeno",
-    symptomKeywords: ["estômago", "estomago", "náusea", "gástrica", "gastrite"],
-    title: "Risco Gastrointestinal Identificado",
-    message: (drug, symptom) =>
-      `${drug} pode estar associado a ${symptom}. Considerar protetor gástrico.`,
-  },
-  {
-    drugName: "Metformina",
-    symptomKeywords: ["náusea", "diarreia", "vômito", "enjoo"],
-    title: "Intolerância Gastrointestinal Detectada",
-    message: (drug, symptom) =>
-      `${drug} pode estar causando ${symptom}. Considerar formulação de liberação prolongada.`,
-  },
-];
+    {
+      drugName: "Lisinopril",
+      symptomKeywords: ["tosse", "tosse seca"],
+      title: "Potencial Evento Iatrogênico Detectado",
+      message: (drug, symptom) =>
+        `O ${drug} pode estar causando a ${symptom} relatada. Revisão clínica recomendada.`,
+    },
+    {
+      drugName: "Ibuprofeno",
+      symptomKeywords: ["estômago", "estomago", "náusea", "gástrica", "gastrite"],
+      title: "Risco Gastrointestinal Identificado",
+      message: (drug, symptom) =>
+        `${drug} pode estar associado a ${symptom}. Considerar protetor gástrico.`,
+    },
+    {
+      drugName: "Metformina",
+      symptomKeywords: ["náusea", "diarreia", "vômito", "enjoo"],
+      title: "Intolerância Gastrointestinal Detectada",
+      message: (drug, symptom) =>
+        `${drug} pode estar causando ${symptom}. Considerar formulação de liberação prolongada.`,
+    },
+  ];
 
 function findAlert(patient: PatientData) {
   for (const rule of DRUG_ALERTS) {
