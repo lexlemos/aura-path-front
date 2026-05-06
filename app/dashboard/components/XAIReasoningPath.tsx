@@ -792,7 +792,7 @@ export function XAIReasoningPath({ patient, autoPlay = false }: Props) {
   const isEmpty = visibleIds.size === 0 && !animating;
 
   return (
-    <div className="w-full flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div className="w-full h-full flex flex-col bg-white border border-gray-200 rounded-xl overflow-hidden">
       {/* Cabeçalho */}
       <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -816,7 +816,7 @@ export function XAIReasoningPath({ patient, autoPlay = false }: Props) {
       </div>
 
       {/* Diagrama ReactFlow */}
-      <div className="w-full h-[640px] bg-slate-50/50 relative">
+      <div className="w-full flex-1 min-h-[500px] bg-slate-50/50 relative">
         {isEmpty ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-gray-400">
             <FileText className="w-10 h-10 opacity-30" />
